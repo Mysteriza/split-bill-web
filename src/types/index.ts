@@ -18,12 +18,11 @@ export interface Transaction {
 
 export interface Summary {
   totalBill: number;
-  totalExpenses: number;
-  sharePerPerson: number;
+  totalItemExpenses: number;
+  commonCosts: number;
   participants: Array<{
     name: string;
-    totalSpent: number;
-    balance: number;
+    totalToPay: number;
+    totalItems: number;
   }>;
-  transactions: Transaction[];
 }
