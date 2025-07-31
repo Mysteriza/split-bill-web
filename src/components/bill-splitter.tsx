@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   UserPlus,
   Trash2,
@@ -8,6 +9,7 @@ import {
   Calculator,
   ArrowRight,
   X,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,19 +45,34 @@ export default function BillSplitter() {
   const [newExpenses, setNewExpenses] = useState<{
     [key: string]: { description: string; amount: string };
   }>({});
-  const [tax, setTax] = useState('11');
+  const [tax, setTax] = useState('0');
   const [deliveryFee, setDeliveryFee] = useState('0');
   const [discount, setDiscount] = useState('0');
   const [summary, setSummary] = useState<Summary | null>(null);
 
-  const formatRupiah = (amount: number) => {
+  const formatRupiah = useCallback((amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Math.round(amount));
-  };
+  }, []);
+
+  const totalItemExpenses = useMemo(() => {
+    return participants.reduce(
+      (total, p) => total + p.expenses.reduce((sum, exp) => sum + exp.amount, 0),
+      0
+    );
+  }, [participants]);
+
+  const totalBill = useMemo(() => {
+    const taxValue = parseFloat(tax) || 0;
+    const deliveryFeeValue = parseFloat(deliveryFee) || 0;
+    const discountValue = parseFloat(discount) || 0;
+    return totalItemExpenses + taxValue + deliveryFeeValue - discountValue;
+  }, [totalItemExpenses, tax, deliveryFee, discount]);
+
 
   const addParticipant = () => {
     if (newParticipantName.trim() !== '') {
@@ -70,17 +87,30 @@ export default function BillSplitter() {
         ...prev,
         [newParticipant.id]: { description: '', amount: '' },
       }));
+       setSummary(null);
     }
   };
 
   const removeParticipant = (id: string) => {
-    setParticipants(participants.filter((p) => p.id !== id));
+    setParticipants((prev) => prev.filter((p) => p.id !== id));
+    setNewExpenses((prev) => {
+        const newExp = {...prev};
+        delete newExp[id];
+        return newExp;
+    })
     setSummary(null);
   };
+  
+  const resetParticipants = () => {
+    setParticipants([]);
+    setNewExpenses({});
+    setSummary(null);
+  }
 
   const addExpense = (participantId: string) => {
     const expenseInput = newExpenses[participantId];
     if (
+      expenseInput &&
       expenseInput.description.trim() !== '' &&
       parseFloat(expenseInput.amount) > 0
     ) {
@@ -142,58 +172,17 @@ export default function BillSplitter() {
           Kalkulator Gotong Royong
         </h1>
         <p className="text-muted-foreground mt-2">
-          Bagi tagihan dengan mudah, cepat, dan bergaya retro.
+          Bagi tagihan dengan mudah, cepat, dan rapi.
         </p>
       </header>
 
-      <div className="grid md:grid-cols-2 gap-8 items-start">
+      <div className="grid lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-6">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle>1. Konfigurasi Bersama</CardTitle>
-              <CardDescription>
-                Masukkan biaya atau potongan yang berlaku untuk semua.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="tax">Pajak (%)</Label>
-                <Input
-                  id="tax"
-                  type="number"
-                  placeholder="Contoh: 11"
-                  value={tax}
-                  onChange={(e) => setTax(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="deliveryFee">Ongkos Kirim (Rp)</Label>
-                <Input
-                  id="deliveryFee"
-                  type="number"
-                  placeholder="Contoh: 20000"
-                  value={deliveryFee}
-                  onChange={(e) => setDeliveryFee(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="discount">Diskon (Rp)</Label>
-                <Input
-                  id="discount"
-                  type="number"
-                  placeholder="Contoh: 10000"
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>2. Tambah Peserta & Pengeluaran</CardTitle>
-              <CardDescription>
-                Masukkan nama teman-temanmu dan apa saja yang mereka bayar.
+              <CardTitle>1. Masukkan Peserta & Pesanan</CardTitle>
+               <CardDescription>
+                Tambahkan temanmu dan apa saja yang mereka pesan.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -204,35 +193,34 @@ export default function BillSplitter() {
                   onChange={(e) => setNewParticipantName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
                 />
-                <Button onClick={addParticipant} aria-label="Tambah Peserta">
+                <Button onClick={addParticipant} aria-label="Tambah Peserta" className="px-3">
                   <UserPlus />
                 </Button>
               </div>
             </CardContent>
 
             {participants.length > 0 && (
-              <Accordion type="multiple" className="w-full px-6 pb-6">
+              <Accordion type="multiple" className="w-full px-6 pb-2">
                 {participants.map((p) => (
                   <AccordionItem value={p.id} key={p.id}>
-                    <AccordionTrigger className="font-bold">
-                      <div className="flex justify-between w-full items-center pr-4">
-                        <span>{p.name}</span>
-                        <span className="text-muted-foreground font-medium">
+                    <AccordionTrigger>
+                       <div className="flex justify-between w-full items-center pr-4">
+                        <span className="font-bold truncate">{p.name}</span>
+                        <span className="text-muted-foreground font-medium text-sm whitespace-nowrap">
                           {formatRupiah(participantTotals[p.id] || 0)}
                         </span>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="space-y-4">
-                      {p.expenses.length > 0 ? (
-                        <ul className="space-y-2">
+                    <AccordionContent className="space-y-4 pt-2">
+                      <ul className="space-y-2">
                           {p.expenses.map((exp) => (
                             <li
                               key={exp.id}
                               className="flex justify-between items-center text-sm bg-background/50 p-2 rounded-md"
                             >
-                              <span>{exp.description}</span>
-                              <div className="flex items-center gap-2">
-                                <span>{formatRupiah(exp.amount)}</span>
+                              <span className='truncate pr-2'>{exp.description}</span>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className='font-medium'>{formatRupiah(exp.amount)}</span>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -245,60 +233,30 @@ export default function BillSplitter() {
                             </li>
                           ))}
                         </ul>
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-2">
-                          Belum ada pengeluaran.
-                        </p>
-                      )}
                       <div className="flex gap-2 items-end">
-                        <div className="flex-grow space-y-1">
-                          <Label
-                            htmlFor={`desc-${p.id}`}
-                            className="text-xs"
-                          >
-                            Deskripsi Item
-                          </Label>
-                          <Input
-                            id={`desc-${p.id}`}
+                        <Input
                             placeholder="Cth: Nasi Goreng"
                             value={newExpenses[p.id]?.description || ''}
                             onChange={(e) =>
                               setNewExpenses({
                                 ...newExpenses,
-                                [p.id]: {
-                                  ...newExpenses[p.id],
-                                  description: e.target.value,
-                                },
+                                [p.id]: { ...newExpenses[p.id], description: e.target.value, },
                               })
                             }
                           />
-                        </div>
-                        <div className="w-32 space-y-1">
-                          <Label
-                            htmlFor={`amount-${p.id}`}
-                            className="text-xs"
-                          >
-                            Jumlah (Rp)
-                          </Label>
-                          <Input
-                            id={`amount-${p.id}`}
+                        <Input
                             type="number"
+                            className='w-32 flex-shrink-0'
                             placeholder="25000"
                             value={newExpenses[p.id]?.amount || ''}
                             onChange={(e) =>
                               setNewExpenses({
                                 ...newExpenses,
-                                [p.id]: {
-                                  ...newExpenses[p.id],
-                                  amount: e.target.value,
-                                },
+                                [p.id]: { ...newExpenses[p.id], amount: e.target.value,},
                               })
                             }
-                            onKeyDown={(e) =>
-                              e.key === 'Enter' && addExpense(p.id)
-                            }
+                            onKeyDown={(e) => e.key === 'Enter' && addExpense(p.id)}
                           />
-                        </div>
                         <Button
                           size="icon"
                           onClick={() => addExpense(p.id)}
@@ -307,62 +265,84 @@ export default function BillSplitter() {
                           <PlusCircle className="h-5 w-5" />
                         </Button>
                       </div>
+                      <Button variant="destructive" size="sm" className='w-full' onClick={() => removeParticipant(p.id)}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Hapus {p.name}
+                      </Button>
                     </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
             )}
-             <CardFooter className="flex justify-end">
-                <Button variant="destructive" onClick={() => setParticipants([])} disabled={participants.length === 0}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Reset Semua Peserta
+            {participants.length > 0 && 
+             <CardFooter className="flex justify-end pt-4">
+                <Button variant="destructive" onClick={resetParticipants}>
+                    <Trash2 className="mr-2 h-4 w-4" /> Reset Semua
                 </Button>
             </CardFooter>
+            }
           </Card>
         </div>
 
         <div className="space-y-6 sticky top-8">
-          <Button
-            onClick={handleCalculate}
-            className="w-full text-lg py-6"
-            disabled={participants.length === 0}
-          >
-            <Calculator className="mr-2 h-5 w-5" /> Hitung Pembagian
-          </Button>
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle>2. Biaya Tambahan & Total</CardTitle>
+                    <CardDescription>
+                        Biaya atau potongan yang berlaku untuk semua.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="tax">Pajak (Rp)</Label>
+                            <Input id="tax" type="number" placeholder="Contoh: 15000" value={tax} onChange={(e) => setTax(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="deliveryFee">Ongkos Kirim (Rp)</Label>
+                            <Input id="deliveryFee" type="number" placeholder="Contoh: 20000" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="discount">Diskon (Rp)</Label>
+                            <Input id="discount" type="number" placeholder="Contoh: 10000" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+                        </div>
+                    </div>
+                     <div className="bg-primary/10 p-4 rounded-lg flex justify-between items-center">
+                        <span className="font-semibold text-primary">Total Tagihan</span>
+                        <span className="text-2xl font-bold text-primary">{formatRupiah(totalBill)}</span>
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleCalculate} className="w-full text-lg py-6" disabled={participants.length < 2}>
+                        <Calculator className="mr-2 h-5 w-5" /> Hitung Pembagian
+                    </Button>
+                </CardFooter>
+            </Card>
 
           {summary ? (
             <Card className="shadow-lg animate-fade-in">
               <CardHeader>
                 <CardTitle>3. Hasil Patungan</CardTitle>
+                 <CardDescription>
+                    Berikut adalah rincian pembagian dan transaksi yang diperlukan.
+                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div className="bg-background/50 p-3 rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      Total Tagihan
-                    </p>
-                    <p className="text-xl font-bold text-primary">
-                      {formatRupiah(summary.totalBill)}
-                    </p>
-                  </div>
-                  <div className="bg-background/50 p-3 rounded-lg">
+              <CardContent className="space-y-6">
+                 <div className="bg-background/50 p-3 rounded-lg text-center">
                     <p className="text-sm text-muted-foreground">
                       Bagian Per Orang
                     </p>
-                    <p className="text-xl font-bold">
+                    <p className="text-2xl font-bold">
                       {formatRupiah(summary.sharePerPerson)}
                     </p>
                   </div>
-                </div>
 
                 <div>
-                  <h4 className="font-semibold mb-2">Rincian Peserta</h4>
+                  <h4 className="font-semibold mb-2 text-center">Rincian Saldo Peserta</h4>
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nama</TableHead>
-                        <TableHead className="text-right">
-                          Pengeluaran
-                        </TableHead>
+                        <TableHead className="text-right">Total Bayar</TableHead>
                         <TableHead className="text-right">Saldo</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -390,22 +370,17 @@ export default function BillSplitter() {
 
                 {summary.transactions.length > 0 && (
                   <div>
-                    <h4 className="font-semibold mb-2">
+                    <h4 className="font-semibold mb-2 text-center">
                       Transaksi Penyelesaian
                     </h4>
                     <ul className="space-y-2">
                       {summary.transactions.map((t, i) => (
-                        <li
-                          key={i}
-                          className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-background/50 p-3 rounded-lg"
-                        >
-                          <div className='flex items-center text-sm sm:text-base'>
-                            <span className="font-bold text-primary">{t.from}</span>
-                            <span className='mx-2 text-muted-foreground'>harus bayar ke</span>
+                        <li key={i} className="flex items-center justify-center bg-background/50 p-3 rounded-lg text-sm sm:text-base">
+                            <span className="font-bold text-destructive">{t.from}</span>
+                            <ArrowRight className='mx-2 h-4 w-4 text-muted-foreground flex-shrink-0' />
                             <span className="font-bold text-green-600">{t.to}</span>
-                            <ArrowRight className='mx-2 h-4 w-4 text-muted-foreground' />
+                            <span className='mx-2 text-muted-foreground'>sebesar</span>
                             <span className='font-semibold'>{formatRupiah(t.amount)}</span>
-                          </div>
                         </li>
                       ))}
                     </ul>
@@ -414,12 +389,13 @@ export default function BillSplitter() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="text-center p-8 border-dashed">
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Hasil perhitungan akan muncul di sini.
-                </p>
-              </CardContent>
+             <Card className="text-center p-8 border-dashed flex flex-col items-center justify-center">
+                <FileText className="h-10 w-10 text-muted-foreground mb-4" />
+                <CardContent>
+                    <p className="text-muted-foreground">
+                    Hasil perhitungan akan muncul di sini setelah kamu menekan tombol "Hitung Pembagian".
+                    </p>
+                </CardContent>
             </Card>
           )}
         </div>

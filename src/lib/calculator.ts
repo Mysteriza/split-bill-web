@@ -2,7 +2,7 @@ import type { Participant, Summary, Transaction } from '@/types';
 
 export function calculateSplit(
   participants: Participant[],
-  taxPercent: number,
+  taxAmount: number,
   deliveryFee: number,
   discount: number
 ): Summary | null {
@@ -17,9 +17,12 @@ export function calculateSplit(
 
   const totalExpenses = participantSummaries.reduce((sum, p) => sum + p.totalSpent, 0);
   
-  const totalAfterDiscount = totalExpenses - discount;
-  const taxAmount = totalAfterDiscount * (taxPercent / 100);
-  const totalBill = totalAfterDiscount + taxAmount + deliveryFee;
+  const totalBill = totalExpenses + taxAmount + deliveryFee - discount;
+
+  if (totalBill < 0) {
+      // Or handle this case as you see fit
+      return null;
+  }
 
   const sharePerPerson = totalBill / participants.length;
 
@@ -40,6 +43,7 @@ export function calculateSplit(
     const receiver = receivers[receiverIndex];
     const amount = Math.min(payer.balance, receiver.balance);
 
+    // To avoid creating transactions for negligible amounts due to floating point inaccuracies
     if (amount > 0.01) {
         transactions.push({
           from: payer.name,
