@@ -37,7 +37,7 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
   const { toast } = useToast();
   
   const generateTxtContent = () => {
-    let content = `*Rincian Patungan - Kalkulator Gotong Royong*\n\n`;
+    let content = `*Rincian Patungan - Kalkulator Receh*\n\n`;
     content += `====================================\n\n`;
     
     participants.forEach(p => {
@@ -70,7 +70,7 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
       content += `*${p.name}*: *${formatRupiah(p.totalToPay)}*\n`;
     });
     content += `\n====================================\n`;
-    content += `_Dihitung dengan Kalkulator Gotong Royong_`;
+    content += `_Dihitung dengan Kalkulator Receh_`;
 
     return content;
   };
@@ -102,7 +102,7 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
     doc.text('Rincian Patungan', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Dihitung dengan Kalkulator Gotong Royong', doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+    doc.text('Dihitung dengan Kalkulator Receh', doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
 
 
     // Summary Table

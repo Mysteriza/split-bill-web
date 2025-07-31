@@ -1,4 +1,4 @@
-# Kalkulator Gotong Royong
+# Kalkulator Receh
 
 This is a NextJS application for splitting bills, tailored for Indonesian users.
 

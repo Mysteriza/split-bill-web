@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Kalkulator Gotong Royong',
+  title: 'Kalkulator Receh',
   description: 'Aplikasi patungan untuk membagi tagihan dengan mudah.',
 };
 

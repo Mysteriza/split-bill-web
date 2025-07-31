@@ -187,7 +187,7 @@ export default function BillSplitter() {
     <div className="space-y-8">
       <header className="text-center">
         <h1 className="text-2xl md:text-4xl font-bold font-headline text-primary animate-fade-in">
-          Kalkulator Gotong Royong
+          Kalkulator Receh
         </h1>
         <p className="text-muted-foreground mt-2 text-xs md:text-sm animate-fade-in animation-delay-200">
           Bagi tagihan dengan mudah, cepat, dan rapi.
