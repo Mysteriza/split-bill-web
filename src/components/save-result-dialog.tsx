@@ -34,7 +34,6 @@ const formatRupiah = (amount: number) => {
 export function SaveResultDialog({ children, summary, participants }: SaveResultDialogProps) {
   const { toast } = useToast();
   
-  // -- PENYESUAIAN #1: Format Teks Baru --
   const generateTxtContent = () => {
     let content = `🧾 *Rincian Patungan - Kalkulator Receh* 🧾\n\n`;
     
@@ -60,7 +59,9 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
     content += `====================================\n`;
     content += `*Ringkasan Biaya Bersama:*\n\n`;
     content += `Subtotal Pesanan: ${formatRupiah(summary.totalItemExpenses)}\n`;
-    content += `Pajak: ${formatRupiah(summary.taxAmount)}\n`;
+    // -- Penyesuaian Pajak --
+    content += `PPN: ${formatRupiah(summary.ppnAmount)}\n`;
+    content += `Service Tax: ${formatRupiah(summary.serviceTaxAmount)}\n`;
     content += `Ongkir: ${formatRupiah(summary.deliveryFee)}\n`;
     content += `Diskon: -${formatRupiah(summary.discount)}\n`;
     content += `------------------------------------\n`;
@@ -109,7 +110,9 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
       head: [['Deskripsi', 'Jumlah']],
       body: [
         ['Subtotal Pesanan', formatRupiah(summary.totalItemExpenses)],
-        ['Pajak', formatRupiah(summary.taxAmount)],
+        // -- Penyesuaian Pajak --
+        ['PPN', formatRupiah(summary.ppnAmount)],
+        ['Service Tax', formatRupiah(summary.serviceTaxAmount)],
         ['Ongkir', formatRupiah(summary.deliveryFee)],
         ['Diskon', `-${formatRupiah(summary.discount)}`],
         [{ content: 'Total Tagihan', styles: { fontStyle: 'bold' } }, { content: formatRupiah(summary.totalBill), styles: { fontStyle: 'bold' } }],

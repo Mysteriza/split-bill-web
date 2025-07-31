@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, Fragment } from 'react';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import DOMPurify from 'dompurify';
 import {
   UserPlus,
@@ -14,11 +14,11 @@ import {
   Info,
   BookUser,
   Pencil,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Card,
   CardContent,
@@ -47,11 +47,55 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from "@/components/ui/separator";
 import { useToast } from '@/hooks/use-toast';
-import type { Participant, Expense, Summary, TaxDetails } from '@/types';
+import type { Participant, Expense, Summary } from '@/types';
 import { calculateSplit } from '@/lib/calculator';
 import { SaveResultDialog } from './save-result-dialog';
 
-// -- Komponen Baru: Dialog Kelola Kontak --
+// -- Komponen Dialog Bantuan/Tutorial --
+function TutorialDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        {/* Penyesuaian: Menggunakan 'gap-1' untuk jarak yang pas */}
+        <Button variant="link" className="p-0 h-auto text-muted-foreground gap-1">
+          <HelpCircle className="h-4 w-4" /> Tutorial
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><HelpCircle/> Cara Menggunakan Kalkulator Receh</DialogTitle>
+        </DialogHeader>
+        <div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4">
+            <p>Selamat datang! Berikut panduan singkat untuk menggunakan aplikasi ini:</p>
+            <div>
+                <h4 className="font-semibold mb-1">1. Tambah Peserta</h4>
+                <p className="text-muted-foreground">Ketik nama teman di kolom <span className="font-semibold text-primary">"Nama Peserta Baru"</span> lalu tekan Enter atau tombol `+`. Anda juga bisa menambahkan dari daftar kontak yang tersimpan melalui tombol <span className="font-semibold text-primary">"Kelola Kontak"</span>.</p>
+            </div>
+             <div>
+                <h4 className="font-semibold mb-1">2. Masukkan Pesanan</h4>
+                <p className="text-muted-foreground">Di dalam kartu setiap peserta, masukkan <span className="font-semibold text-primary">nama item</span> dan <span className="font-semibold text-primary">harganya</span>, lalu tekan `+`. Anda bisa mengedit atau menghapus item yang sudah ada.</p>
+            </div>
+             <div>
+                <h4 className="font-semibold mb-1">3. Atur Biaya Tambahan</h4>
+                <p className="text-muted-foreground">Di bagian kanan, masukkan biaya seperti <span className="font-semibold text-primary">PPN (%)</span>, <span className="font-semibold text-primary">Service Tax (%)</span>, Ongkir, dan Diskon jika ada.</p>
+            </div>
+             <div>
+                <h4 className="font-semibold mb-1">4. Lihat Hasilnya</h4>
+                <p className="text-muted-foreground">Semua perhitungan terjadi secara <span className="font-semibold text-primary">real-time</span>. Anda bisa langsung melihat total tagihan dan berapa yang harus dibayar setiap orang di kartu "Hasil Patungan".</p>
+            </div>
+             <div>
+                <h4 className="font-semibold mb-1">5. Simpan & Bagikan</h4>
+                <p className="text-muted-foreground">Gunakan tombol <span className="font-semibold text-primary">"Simpan"</span> untuk mengunduh PDF atau menyalin ringkasan teks yang rapi untuk dibagikan ke teman-teman Anda.</p>
+            </div>
+        </div>
+        <DialogFooter>
+          <DialogClose asChild><Button>Mengerti!</Button></DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function ContactsDialog({ onSelect, contacts, setContacts }: {
   onSelect: (contact: Pick<Participant, 'id' | 'name'>) => void;
   contacts: Pick<Participant, 'id' | 'name'>[];
@@ -111,7 +155,6 @@ function ContactsDialog({ onSelect, contacts, setContacts }: {
   );
 }
 
-// -- Komponen Baru: Dialog Edit Item --
 function EditExpenseDialog({ expense, onSave, children }: { expense: Expense, onSave: (updatedExpense: Expense) => void, children: React.ReactNode }) {
     const [description, setDescription] = useState(expense.description);
     const [amount, setAmount] = useState(new Intl.NumberFormat('id-ID').format(expense.amount));
@@ -128,7 +171,7 @@ function EditExpenseDialog({ expense, onSave, children }: { expense: Expense, on
 
     const handleSave = () => {
         const sanitizedDescription = DOMPurify.sanitize(description.trim());
-        const numericAmount = Number(amount.replace(/[^0-g]/g, '')) || 0;
+        const numericAmount = Number(amount.replace(/[^0-9]/g, '')) || 0;
         if (sanitizedDescription && numericAmount > 0) {
             onSave({ ...expense, description: sanitizedDescription, amount: numericAmount });
         }
@@ -144,12 +187,8 @@ function EditExpenseDialog({ expense, onSave, children }: { expense: Expense, on
                     <Input placeholder="Harga" value={amount} onChange={handleAmountChange} />
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="ghost">Batal</Button>
-                    </DialogClose>
-                    <DialogClose asChild>
-                        <Button onClick={handleSave}>Simpan Perubahan</Button>
-                    </DialogClose>
+                    <DialogClose asChild><Button variant="ghost">Batal</Button></DialogClose>
+                    <DialogClose asChild><Button onClick={handleSave}>Simpan Perubahan</Button></DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -161,17 +200,14 @@ export function BillSplitter() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [newParticipantName, setNewParticipantName] = useState('');
   
-  const [taxType, setTaxType] = useState<'amount' | 'percentage'>('amount');
-  const [taxValueInput, setTaxValueInput] = useState('');
+  const [ppn, setPpn] = useState('');
+  const [serviceTax, setServiceTax] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('');
   const [discount, setDiscount] = useState('');
   const [summary, setSummary] = useState<Summary | null>(null);
 
   const [contacts, setContacts] = useState<Pick<Participant, 'id' | 'name'>[]>([]);
   const CONTACTS_KEY = 'kalkulatorReceh_contacts';
-
-  // PENYESUAIAN #2: Kontrol Animasi
-  const resultCardAnimation = useAnimation();
   
   useEffect(() => {
     try {
@@ -207,25 +243,15 @@ export function BillSplitter() {
     }).format(Math.round(amount));
   }, []);
 
-  const taxDetails: TaxDetails = useMemo(() => ({
-    type: taxType,
-    value: taxType === 'percentage' ? parseFloat(taxValueInput) || 0 : parseFormattedNumber(taxValueInput),
-  }), [taxType, taxValueInput]);
-
+  const ppnValue = useMemo(() => parseFloat(ppn) || 0, [ppn]);
+  const serviceTaxValue = useMemo(() => parseFloat(serviceTax) || 0, [serviceTax]);
   const deliveryFeeValue = useMemo(() => parseFormattedNumber(deliveryFee), [deliveryFee]);
   const discountValue = useMemo(() => parseFormattedNumber(discount), [discount]);
 
   useEffect(() => {
-    const result = calculateSplit(participants, taxDetails, deliveryFeeValue, discountValue);
+    const result = calculateSplit(participants, ppnValue, serviceTaxValue, deliveryFeeValue, discountValue);
     setSummary(result);
-    // PENYESUAIAN #2: Jalankan animasi saat hasil berubah
-    if (result) {
-        resultCardAnimation.start({
-            scale: [1, 1.02, 1],
-            transition: { duration: 0.5 }
-        });
-    }
-  }, [participants, taxDetails, deliveryFeeValue, discountValue, resultCardAnimation]);
+  }, [participants, ppnValue, serviceTaxValue, deliveryFeeValue, discountValue]);
 
   const addParticipant = () => {
     const sanitizedName = DOMPurify.sanitize(newParticipantName.trim());
@@ -284,11 +310,14 @@ export function BillSplitter() {
       <div className="grid lg:grid-cols-2 gap-6 items-start">
         <div className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-3">
                 <UserPlus className="h-6 w-6" /> Peserta & Pesanan
               </CardTitle>
-              <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
+              <TutorialDialog />
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row-reverse gap-2">
                 <div className="flex-grow flex gap-2">
                    <Input id="new-participant-input" placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addParticipant()} />
                    <Button onClick={addParticipant} aria-label="Tambah Peserta"><PlusCircle className="h-4 w-4" /></Button>
@@ -297,7 +326,7 @@ export function BillSplitter() {
                     <ContactsDialog onSelect={addParticipantFromContact} contacts={contacts} setContacts={setContacts}/>
                 </div>
               </div>
-            </CardHeader>
+            </CardContent>
           </Card>
           <AnimatePresence>
             {participants.map((p) => (
@@ -319,25 +348,30 @@ export function BillSplitter() {
             <Card>
                 <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan & Total</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid sm:grid-cols-2 gap-4">
-                       <div className="space-y-2 sm:col-span-2">
-                            <Label className="text-xs">Pajak</Label>
-                            <div className="flex items-center gap-4">
-                                <RadioGroup defaultValue="amount" value={taxType} onValueChange={(value: 'amount' | 'percentage') => setTaxType(value)} className="flex">
-                                    <div className="flex items-center space-x-2"><RadioGroupItem value="amount" id="tax-amount" /><Label htmlFor="tax-amount" className="text-xs font-normal">Rp</Label></div>
-                                    <div className="flex items-center space-x-2"><RadioGroupItem value="percentage" id="tax-percentage" /><Label htmlFor="tax-percentage" className="text-xs font-normal">%</Label></div>
-                                </RadioGroup>
-                                <Input id="taxValue" type={taxType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={taxValueInput} onChange={(e) => setTaxValueInput(e.target.value)} />
-                            </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="ppn" className="text-xs">PPN (%)</Label>
+                            <Input id="ppn" type="number" placeholder="11" value={ppn} onChange={e => setPpn(e.target.value)} />
                         </div>
-                        <div className="space-y-2"><Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label><Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} /></div>
-                        <div className="space-y-2"><Label htmlFor="discount" className="text-xs">Diskon (Rp)</Label><Input id="discount" type="text" inputMode="decimal" placeholder="0" value={discount} onChange={(e) => setDiscount(e.target.value)} /></div>
+                        <div className="space-y-2">
+                            <Label htmlFor="serviceTax" className="text-xs">Service Tax (%)</Label>
+                            <Input id="serviceTax" type="number" placeholder="5" value={serviceTax} onChange={e => setServiceTax(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label>
+                            <Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="discount" className="text-xs">Diskon (Rp)</Label>
+                            <Input id="discount" type="text" inputMode="decimal" placeholder="0" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+                        </div>
                     </div>
                     {summary && <Separator />}
                     {summary && (
                       <div className='space-y-2 text-sm'>
                            <div className="flex justify-between"><span className="text-muted-foreground">Subtotal Pesanan</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div>
-                           <div className="flex justify-between"><span className="text-muted-foreground">Pajak</span><span>{formatRupiah(summary.taxAmount)}</span></div>
+                           <div className="flex justify-between"><span className="text-muted-foreground">PPN ({ppnValue}%)</span><span>{formatRupiah(summary.ppnAmount)}</span></div>
+                           <div className="flex justify-between"><span className="text-muted-foreground">Service Tax ({serviceTaxValue}%)</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span>{formatRupiah(summary.deliveryFee)}</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Diskon</span><span className='text-destructive'>-{formatRupiah(summary.discount)}</span></div>
                           <Separator />
@@ -347,9 +381,8 @@ export function BillSplitter() {
                 </CardContent>
             </Card>
 
-          {/* PENYESUAIAN #2: Tambahkan motion.div di sini */}
           {summary && participants.length > 0 ? (
-            <motion.div animate={resultCardAnimation}>
+            <motion.div>
                 <Card className="shadow-lg">
                   <CardHeader className="flex flex-row justify-between items-center">
                     <div><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle></div>

@@ -1,8 +1,9 @@
-import type { Participant, Summary, TaxDetails } from '@/types';
+import type { Participant, Summary } from '@/types';
 
 export function calculateSplit(
   participants: Participant[],
-  tax: TaxDetails,
+  ppnPercentage: number, // Baru
+  serviceTaxPercentage: number, // Baru
   deliveryFee: number,
   discount: number
 ): Summary | null {
@@ -15,14 +16,10 @@ export function calculateSplit(
     0
   );
 
-  let taxAmount = 0;
-  if (tax.type === 'percentage') {
-    taxAmount = (totalItemExpenses * tax.value) / 100;
-  } else {
-    taxAmount = tax.value;
-  }
+  const ppnAmount = (totalItemExpenses * ppnPercentage) / 100;
+  const serviceTaxAmount = (totalItemExpenses * serviceTaxPercentage) / 100;
   
-  const commonCosts = taxAmount + deliveryFee - discount;
+  const commonCosts = ppnAmount + serviceTaxAmount + deliveryFee - discount;
   const totalBill = totalItemExpenses + commonCosts;
   
   if (totalBill < 0) {
@@ -40,7 +37,8 @@ export function calculateSplit(
   return {
     totalBill,
     totalItemExpenses,
-    taxAmount,
+    ppnAmount,
+    serviceTaxAmount,
     deliveryFee,
     discount,
     participants: participantSummaries,

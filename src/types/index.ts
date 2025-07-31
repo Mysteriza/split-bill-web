@@ -10,15 +10,11 @@ export interface Participant {
   expenses: Expense[];
 }
 
-export interface TaxDetails {
-  type: 'amount' | 'percentage';
-  value: number;
-}
-
 export interface Summary {
   totalBill: number;
   totalItemExpenses: number;
-  taxAmount: number;
+  ppnAmount: number; // Baru
+  serviceTaxAmount: number; // Baru
   deliveryFee: number;
   discount: number;
   participants: Array<{
