@@ -45,9 +45,9 @@ export default function BillSplitter() {
   const [newExpenses, setNewExpenses] = useState<{
     [key: string]: { description: string; amount: string };
   }>({});
-  const [tax, setTax] = useState('0');
-  const [deliveryFee, setDeliveryFee] = useState('0');
-  const [discount, setDiscount] = useState('0');
+  const [tax, setTax] = useState('');
+  const [deliveryFee, setDeliveryFee] = useState('');
+  const [discount, setDiscount] = useState('');
   const [summary, setSummary] = useState<Summary | null>(null);
 
   const formatRupiah = useCallback((amount: number) => {
