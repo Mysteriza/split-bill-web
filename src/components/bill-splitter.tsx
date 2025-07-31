@@ -63,6 +63,28 @@ export default function BillSplitter() {
       maximumFractionDigits: 0,
     }).format(Math.round(amount));
   }, []);
+  
+  const parseFormattedNumber = (value: string): number => {
+    return Number(value.replace(/[^0-9]/g, '')) || 0;
+  }
+  
+  const handleNumericInputChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const numericValue = parseFormattedNumber(e.target.value);
+      if (isNaN(numericValue)) {
+          setter('');
+          return;
+      }
+      setter(new Intl.NumberFormat('id-ID').format(numericValue));
+  }
+  
+  const handleExpenseAmountChange = (participantId: string, value: string) => {
+    const numericValue = parseFormattedNumber(value);
+     const formattedValue = isNaN(numericValue) ? '' : new Intl.NumberFormat('id-ID').format(numericValue);
+     setNewExpenses(prev => ({
+        ...prev,
+        [participantId]: { ...prev[participantId], amount: formattedValue },
+      }));
+  }
 
   const totalItemExpenses = useMemo(() => {
     return participants.reduce(
@@ -73,11 +95,11 @@ export default function BillSplitter() {
 
   const taxDetails: TaxDetails = useMemo(() => ({
     type: taxType,
-    value: parseFloat(taxValueInput) || 0,
+    value: taxType === 'percentage' ? parseFloat(taxValueInput) || 0 : parseFormattedNumber(taxValueInput),
   }), [taxType, taxValueInput]);
 
-  const deliveryFeeValue = useMemo(() => parseFloat(deliveryFee) || 0, [deliveryFee]);
-  const discountValue = useMemo(() => parseFloat(discount) || 0, [discount]);
+  const deliveryFeeValue = useMemo(() => parseFormattedNumber(deliveryFee), [deliveryFee]);
+  const discountValue = useMemo(() => parseFormattedNumber(discount), [discount]);
 
   const calculatedTaxAmount = useMemo(() => {
      if (taxDetails.type === 'percentage') {
@@ -130,15 +152,16 @@ export default function BillSplitter() {
 
   const addExpense = (participantId: string) => {
     const expenseInput = newExpenses[participantId];
+    const amount = parseFormattedNumber(expenseInput.amount);
     if (
       expenseInput &&
       expenseInput.description.trim() !== '' &&
-      parseFloat(expenseInput.amount) > 0
+      amount > 0
     ) {
       const newExpense: Expense = {
         id: crypto.randomUUID(),
         description: expenseInput.description.trim(),
-        amount: parseFloat(expenseInput.amount),
+        amount: amount,
       };
       setParticipants(
         participants.map((p) =>
@@ -271,16 +294,12 @@ export default function BillSplitter() {
                              <Label htmlFor={`amount-${p.id}`} className="sr-only">Jumlah</Label>
                             <Input
                                 id={`amount-${p.id}`}
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 className='w-full sm:w-32 flex-shrink-0'
-                                placeholder="25000"
+                                placeholder="0"
                                 value={newExpenses[p.id]?.amount || ''}
-                                onChange={(e) =>
-                                  setNewExpenses({
-                                    ...newExpenses,
-                                    [p.id]: { ...newExpenses[p.id], amount: e.target.value,},
-                                  })
-                                }
+                                onChange={(e) => handleExpenseAmountChange(p.id, e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && addExpense(p.id)}
                               />
                            </div>
@@ -334,16 +353,16 @@ export default function BillSplitter() {
                                         <Label htmlFor="tax-percentage" className="text-xs font-normal">%</Label>
                                     </div>
                                 </RadioGroup>
-                                <Input id="taxValue" type="number" placeholder={taxType === 'amount' ? '15000' : '10'} value={taxValueInput} onChange={(e) => setTaxValueInput(e.target.value)} />
+                                <Input id="taxValue" type={taxType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={taxValueInput} onChange={taxType === 'percentage' ? (e) => setTaxValueInput(e.target.value) : handleNumericInputChange(setTaxValueInput)} />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label>
-                            <Input id="deliveryFee" type="number" placeholder="20000" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
+                            <Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={handleNumericInputChange(setDeliveryFee)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="discount" className="text-xs">Diskon (Rp)</Label>
-                            <Input id="discount" type="number" placeholder="10000" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+                            <Input id="discount" type="text" inputMode="decimal" placeholder="0" value={discount} onChange={handleNumericInputChange(setDiscount)} />
                         </div>
                     </div>
                     <Separator />
@@ -429,3 +448,5 @@ export default function BillSplitter() {
     </div>
   );
 }
+
+    
