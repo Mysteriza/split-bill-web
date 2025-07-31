@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo, useCallback, useEffect, Fragment } from 'react';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import DOMPurify from 'dompurify';
 import {
   UserPlus,
@@ -128,7 +128,7 @@ function EditExpenseDialog({ expense, onSave, children }: { expense: Expense, on
 
     const handleSave = () => {
         const sanitizedDescription = DOMPurify.sanitize(description.trim());
-        const numericAmount = Number(amount.replace(/[^0-9]/g, '')) || 0;
+        const numericAmount = Number(amount.replace(/[^0-g]/g, '')) || 0;
         if (sanitizedDescription && numericAmount > 0) {
             onSave({ ...expense, description: sanitizedDescription, amount: numericAmount });
         }
@@ -169,6 +169,9 @@ export function BillSplitter() {
 
   const [contacts, setContacts] = useState<Pick<Participant, 'id' | 'name'>[]>([]);
   const CONTACTS_KEY = 'kalkulatorReceh_contacts';
+
+  // PENYESUAIAN #2: Kontrol Animasi
+  const resultCardAnimation = useAnimation();
   
   useEffect(() => {
     try {
@@ -215,7 +218,14 @@ export function BillSplitter() {
   useEffect(() => {
     const result = calculateSplit(participants, taxDetails, deliveryFeeValue, discountValue);
     setSummary(result);
-  }, [participants, taxDetails, deliveryFeeValue, discountValue]);
+    // PENYESUAIAN #2: Jalankan animasi saat hasil berubah
+    if (result) {
+        resultCardAnimation.start({
+            scale: [1, 1.02, 1],
+            transition: { duration: 0.5 }
+        });
+    }
+  }, [participants, taxDetails, deliveryFeeValue, discountValue, resultCardAnimation]);
 
   const addParticipant = () => {
     const sanitizedName = DOMPurify.sanitize(newParticipantName.trim());
@@ -270,21 +280,20 @@ export function BillSplitter() {
   };
 
   return (
-    <div className="space-y-6"> {/* Penyesuaian #4: Mengurangi jarak dari space-y-8 */}
-      <div className="grid lg:grid-cols-2 gap-6 items-start"> {/* Penyesuaian #4: Mengurangi jarak dari gap-8 */}
-        <div className="space-y-4"> {/* Penyesuaian #4: Mengurangi jarak dari space-y-6 */}
+    <div className="space-y-6">
+      <div className="grid lg:grid-cols-2 gap-6 items-start">
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <UserPlus className="h-6 w-6" /> Peserta & Pesanan
               </CardTitle>
-              {/* Penyesuaian #1: Posisi Tombol Kelola Kontak */}
               <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
                 <div className="flex-grow flex gap-2">
                    <Input id="new-participant-input" placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addParticipant()} />
                    <Button onClick={addParticipant} aria-label="Tambah Peserta"><PlusCircle className="h-4 w-4" /></Button>
                 </div>
-                <div className="sm:mb-0 mb-2"> {/* Margin bottom untuk mobile */}
+                <div className="sm:mb-0 mb-2">
                     <ContactsDialog onSelect={addParticipantFromContact} contacts={contacts} setContacts={setContacts}/>
                 </div>
               </div>
@@ -306,7 +315,7 @@ export function BillSplitter() {
           </AnimatePresence>
         </div>
 
-        <div className="space-y-4 sticky top-6"> {/* Penyesuaian #4: Mengurangi jarak dan posisi sticky */}
+        <div className="space-y-4 sticky top-6">
             <Card>
                 <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan & Total</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
@@ -338,28 +347,31 @@ export function BillSplitter() {
                 </CardContent>
             </Card>
 
+          {/* PENYESUAIAN #2: Tambahkan motion.div di sini */}
           {summary && participants.length > 0 ? (
-            <Card className="shadow-lg animate-fade-in">
-              <CardHeader className="flex flex-row justify-between items-center">
-                <div><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle></div>
-                <SaveResultDialog summary={summary} participants={participants}>
-                   <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan</Button>
-                </SaveResultDialog>
-              </CardHeader>
-              <CardContent>
-                  <Table>
-                    <TableHeader><TableRow><TableHead className="text-xs">Nama</TableHead><TableHead className="text-right text-xs">Total Bayar</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {summary.participants.map((p) => (
-                        <TableRow key={p.name}>
-                          <TableCell className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(p.name) }}></TableCell>
-                          <TableCell className="text-right font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-              </CardContent>
-            </Card>
+            <motion.div animate={resultCardAnimation}>
+                <Card className="shadow-lg">
+                  <CardHeader className="flex flex-row justify-between items-center">
+                    <div><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle></div>
+                    <SaveResultDialog summary={summary} participants={participants}>
+                       <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan</Button>
+                    </SaveResultDialog>
+                  </CardHeader>
+                  <CardContent>
+                      <Table>
+                        <TableHeader><TableRow><TableHead className="text-xs">Nama</TableHead><TableHead className="text-right text-xs">Total Bayar</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                          {summary.participants.map((p) => (
+                            <TableRow key={p.name}>
+                              <TableCell className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(p.name) }}></TableCell>
+                              <TableCell className="text-right font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                  </CardContent>
+                </Card>
+            </motion.div>
           ) : (
              <Card className="text-center p-8 border-dashed flex flex-col items-center justify-center">
                 <FileText className="h-10 w-10 text-muted-foreground mb-4" />
@@ -372,7 +384,6 @@ export function BillSplitter() {
   );
 }
 
-// -- Komponen Card Peserta yang Baru --
 function ParticipantCard({ participant, onRemoveParticipant, onAddExpense, onRemoveExpense, onEditExpense, formatRupiah }: {
     participant: Participant,
     onRemoveParticipant: (id: string) => void,
@@ -384,7 +395,6 @@ function ParticipantCard({ participant, onRemoveParticipant, onAddExpense, onRem
     const [desc, setDesc] = useState('');
     const [amount, setAmount] = useState('');
     
-    // Penyesuaian #2: Formatting harga real-time
     const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const rawValue = e.target.value;
         const numericValue = parseInt(rawValue.replace(/[^0-9]/g, ''), 10);
@@ -435,7 +445,6 @@ function ParticipantCard({ participant, onRemoveParticipant, onAddExpense, onRem
                  <div className="flex w-full gap-2">
                     <Input placeholder="Nama item..." value={desc} onChange={(e) => setDesc(e.target.value)}/>
                     <Input placeholder="Harga..." value={amount} onChange={handleAmountChange} onKeyDown={e => e.key === 'Enter' && handleAddExpense()}/>
-                    {/* Penyesuaian #3: Tombol tambah item lebih besar */}
                     <Button className="px-4" onClick={handleAddExpense} aria-label="Tambah Item"><PlusCircle className="h-5 w-5"/></Button>
                  </div>
             </CardFooter>

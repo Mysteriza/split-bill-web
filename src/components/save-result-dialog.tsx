@@ -34,41 +34,45 @@ const formatRupiah = (amount: number) => {
 export function SaveResultDialog({ children, summary, participants }: SaveResultDialogProps) {
   const { toast } = useToast();
   
+  // -- PENYESUAIAN #1: Format Teks Baru --
   const generateTxtContent = () => {
-    let content = `*Rincian Patungan - Kalkulator Receh*\n\n`;
-    content += `====================================\n\n`;
+    let content = `🧾 *Rincian Patungan - Kalkulator Receh* 🧾\n\n`;
+    
+    content += `====================================\n`;
+    content += `*Detail Pesanan per Orang:*\n\n`;
     
     participants.forEach(p => {
-      content += `*${p.name}*\n`;
+      content += `👤 *${p.name}*\n`;
       if (p.expenses.length > 0) {
         p.expenses.forEach(exp => {
-          content += `- ${exp.description}: ${formatRupiah(exp.amount)}\n`;
+          content += `  - ${exp.description}: ${formatRupiah(exp.amount)}\n`;
         });
       } else {
-        content += `- (Tidak ada pesanan)\n`
+        content += `  - (Tidak ada pesanan)\n`;
       }
       const summaryParticipant = summary.participants.find(sp => sp.name === p.name);
       if (summaryParticipant) {
-        content += `_Subtotal: ${formatRupiah(summaryParticipant.totalItems)}_\n`;
+        content += `  _Subtotal: ${formatRupiah(summaryParticipant.totalItems)}_\n`;
       }
       content += `\n`;
     });
 
     content += `====================================\n`;
-    content += `*Ringkasan Biaya Bersama*\n\n`;
+    content += `*Ringkasan Biaya Bersama:*\n\n`;
     content += `Subtotal Pesanan: ${formatRupiah(summary.totalItemExpenses)}\n`;
     content += `Pajak: ${formatRupiah(summary.taxAmount)}\n`;
     content += `Ongkir: ${formatRupiah(summary.deliveryFee)}\n`;
     content += `Diskon: -${formatRupiah(summary.discount)}\n`;
+    content += `------------------------------------\n`;
     content += `*Total Tagihan: ${formatRupiah(summary.totalBill)}*\n\n`;
     
     content += `====================================\n`;
-    content += `*Total Bayar Per Orang*\n\n`;
+    content += `*💰 Total Bayar Per Orang:*\n\n`;
     summary.participants.forEach(p => {
-      content += `*${p.name}*: *${formatRupiah(p.totalToPay)}*\n`;
+      content += `*${p.name}* 👉 *${formatRupiah(p.totalToPay)}*\n`;
     });
     content += `\n====================================\n`;
-    content += `_Dihitung dengan Kalkulator Receh_`;
+    content += `_Dihitung dengan Kalkulator Receh ✨_`;
 
     return content;
   };
@@ -111,7 +115,6 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
         [{ content: 'Total Tagihan', styles: { fontStyle: 'bold' } }, { content: formatRupiah(summary.totalBill), styles: { fontStyle: 'bold' } }],
       ],
       theme: 'grid',
-      headStyles: { fillColor: [229, 149, 84] },
     });
 
     const finalPaymentY = (doc as any).lastAutoTable.finalY + 15;
@@ -121,7 +124,6 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
         head: [['Nama', 'Total Bayar']],
         body: summary.participants.map(p => [p.name, formatRupiah(p.totalToPay)]),
         theme: 'striped',
-        headStyles: { fillColor: [229, 149, 84] },
     });
 
     const detailedExpensesY = (doc as any).lastAutoTable.finalY + 15;
@@ -139,7 +141,6 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
             : [[p.name, '(Tidak ada pesanan)', '-']]
         ),
         theme: 'grid',
-        headStyles: { fillColor: [229, 149, 84] },
     });
 
     doc.save('hasil-patungan.pdf');
