@@ -56,7 +56,6 @@ function TutorialDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        {/* Penyesuaian: Menggunakan 'gap-1' untuk jarak yang pas */}
         <Button variant="link" className="p-0 h-auto text-muted-foreground gap-1">
           <HelpCircle className="h-4 w-4" /> Tutorial
         </Button>
@@ -87,6 +86,19 @@ function TutorialDialog() {
                 <h4 className="font-semibold mb-1">5. Simpan & Bagikan</h4>
                 <p className="text-muted-foreground">Gunakan tombol <span className="font-semibold text-primary">"Simpan"</span> untuk mengunduh PDF atau menyalin ringkasan teks yang rapi untuk dibagikan ke teman-teman Anda.</p>
             </div>
+
+            <Separator className="my-4" />
+            <div>
+                <h4 className="font-semibold mb-2">🤔 Mengapa Tidak Ada Fitur Scan Struk?</h4>
+                {/* Penyesuaian: Menggunakan tag <strong> untuk cetak tebal */}
+                <div className="space-y-2 text-muted-foreground">
+                    <p>Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk demi <strong>akurasi dan kebebasan pengguna</strong>.</p>
+                    <p>Teknologi scan (OCR) dan AI, meskipun canggih, seringkali tidak 100% akurat dalam membaca struk yang berbeda-beda formatnya, lecek, atau buram. Kesalahan kecil pada angka bisa menyebabkan perhitungan menjadi fatal.</p>
+                    <p>Metode input manual saat ini memastikan <strong>Anda memiliki kontrol penuh</strong> untuk menetapkan setiap item ke peserta yang benar, sesuatu yang tidak bisa dilakukan oleh AI secara otomatis. Ini adalah inti dari proses patungan yang adil.</p>
+                    <p>Selain itu, layanan scan AI yang akurat memerlukan biaya, yang akan memaksa aplikasi ini menjadi berbayar. Dengan tetap sederhana, <strong>Kalkulator Receh akan selalu gratis, open-source, dan dapat diandalkan</strong>.</p>
+                </div>
+            </div>
+
         </div>
         <DialogFooter>
           <DialogClose asChild><Button>Mengerti!</Button></DialogClose>
