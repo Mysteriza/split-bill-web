@@ -351,7 +351,7 @@ export function BillSplitter() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="ppn" className="text-xs">PPN (%)</Label>
-                            <Input id="ppn" type="number" placeholder="11" value={ppn} onChange={e => setPpn(e.target.value)} />
+                            <Input id="ppn" type="number" placeholder="12" value={ppn} onChange={e => setPpn(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="serviceTax" className="text-xs">Service Tax (%)</Label>
