@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['"Press Start 2P"', 'system-ui', 'sans-serif'],
-        headline: ['"Press Start 2P"', 'system-ui', 'sans-serif'],
+        body: ['"Literata"', 'serif'],
+        headline: ['"Literata"', 'serif'],
         code: ['monospace'],
       },
       colors: {

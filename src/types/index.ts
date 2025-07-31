@@ -16,10 +16,18 @@ export interface Transaction {
   amount: number;
 }
 
+export interface TaxDetails {
+  type: 'amount' | 'percentage';
+  value: number;
+}
+
 export interface Summary {
   totalBill: number;
   totalItemExpenses: number;
   commonCosts: number;
+  taxAmount: number;
+  deliveryFee: number;
+  discount: number;
   participants: Array<{
     name: string;
     totalToPay: number;

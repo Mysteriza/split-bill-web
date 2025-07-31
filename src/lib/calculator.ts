@@ -1,8 +1,8 @@
-import type { Participant, Summary } from '@/types';
+import type { Participant, Summary, TaxDetails } from '@/types';
 
 export function calculateSplit(
   participants: Participant[],
-  taxAmount: number,
+  tax: TaxDetails,
   deliveryFee: number,
   discount: number
 ): Summary | null {
@@ -15,6 +15,13 @@ export function calculateSplit(
     0
   );
 
+  let taxAmount = 0;
+  if (tax.type === 'percentage') {
+    taxAmount = (totalItemExpenses * tax.value) / 100;
+  } else {
+    taxAmount = tax.value;
+  }
+  
   const commonCosts = taxAmount + deliveryFee - discount;
   const totalBill = totalItemExpenses + commonCosts;
   
@@ -22,7 +29,7 @@ export function calculateSplit(
       return null;
   }
 
-  const commonCostsPerPerson = commonCosts / participants.length;
+  const commonCostsPerPerson = participants.length > 0 ? commonCosts / participants.length : 0;
 
   const participantSummaries = participants.map(p => {
     const totalItems = p.expenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -35,6 +42,9 @@ export function calculateSplit(
     totalBill,
     totalItemExpenses,
     commonCosts,
+    taxAmount,
+    deliveryFee,
+    discount,
     participants: participantSummaries,
   };
 }
