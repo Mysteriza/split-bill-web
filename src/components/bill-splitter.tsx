@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from 'react';
@@ -42,7 +41,7 @@ import type { Participant, Expense, Summary, TaxDetails } from '@/types';
 import { calculateSplit } from '@/lib/calculator';
 import { SaveResultDialog } from './save-result-dialog';
 
-export default function BillSplitter() {
+export function BillSplitter() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [newParticipantName, setNewParticipantName] = useState('');
   const [newExpenses, setNewExpenses] = useState<{
@@ -208,15 +207,6 @@ export default function BillSplitter() {
 
   return (
     <div className="space-y-8">
-      <header className="text-center">
-        <h1 className="text-2xl md:text-4xl font-bold font-headline text-primary animate-fade-in">
-          Kalkulator Receh
-        </h1>
-        <p className="text-muted-foreground mt-2 text-xs md:text-sm animate-fade-in animation-delay-200">
-          Bagi tagihan dengan mudah, cepat, dan rapi.
-        </p>
-      </header>
-
       <div className="grid lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-6">
           <Card className="shadow-lg transform hover:scale-[1.01] transition-transform duration-300">
@@ -434,7 +424,7 @@ export default function BillSplitter() {
               </CardContent>
             </Card>
           ) : (
-             <Card className="text-center p-8 border-dashed flex flex-col items-center justify-center animate-pulse">
+             <Card className="text-center p-8 border-dashed flex flex-col items-center justify-center">
                 <FileText className="h-10 w-10 text-muted-foreground mb-4" />
                 <CardContent>
                     <p className="text-muted-foreground text-xs">
@@ -448,5 +438,3 @@ export default function BillSplitter() {
     </div>
   );
 }
-
-    

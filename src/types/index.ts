@@ -10,12 +10,6 @@ export interface Participant {
   expenses: Expense[];
 }
 
-export interface Transaction {
-  from: string;
-  to: string;
-  amount: number;
-}
-
 export interface TaxDetails {
   type: 'amount' | 'percentage';
   value: number;
@@ -24,7 +18,6 @@ export interface TaxDetails {
 export interface Summary {
   totalBill: number;
   totalItemExpenses: number;
-  commonCosts: number;
   taxAmount: number;
   deliveryFee: number;
   discount: number;

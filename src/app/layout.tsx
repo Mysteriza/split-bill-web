@@ -1,10 +1,19 @@
-import type {Metadata} from 'next';
+import type { Metadata } from 'next';
+import { Inter as FontSans } from 'next/font/google';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster"
+
+import { cn } from '@/lib/utils';
+import { Toaster } from '@/components/ui/toaster';
+import { APP_NAME } from '@/lib/constants';
+
+const fontSans = FontSans({
+  subsets: ['latin'],
+  variable: '--font-sans',
+});
 
 export const metadata: Metadata = {
-  title: 'Kalkulator Receh',
-  description: 'Aplikasi patungan untuk membagi tagihan dengan mudah.',
+  title: APP_NAME,
+  description: 'A simple tool to split bills with friends.',
 };
 
 export default function RootLayout({
@@ -13,13 +22,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&display=swap" rel="stylesheet" />
-      </head>
-      <body className="font-body antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          'min-h-screen bg-background font-sans antialiased',
+          fontSans.variable
+        )}
+      >
         {children}
         <Toaster />
       </body>

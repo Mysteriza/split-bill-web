@@ -1,9 +1,7 @@
-
 "use client";
 
-import { useState } from 'react';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Dialog,
   DialogContent,
@@ -94,9 +92,7 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
 
   const handleDownloadPdf = () => {
     const doc = new jsPDF();
-    const tableStartY = 70;
 
-    // Header
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     doc.text('Rincian Patungan', doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
@@ -104,13 +100,8 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
     doc.setFont('helvetica', 'normal');
     doc.text('Dihitung dengan Kalkulator Receh', doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
 
-
-    // Summary Table
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Ringkasan Biaya', 14, 40);
-    (doc as any).autoTable({
-      startY: 45,
+    autoTable(doc, {
+      startY: 40,
       head: [['Deskripsi', 'Jumlah']],
       body: [
         ['Subtotal Pesanan', formatRupiah(summary.totalItemExpenses)],
@@ -123,13 +114,9 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
       headStyles: { fillColor: [229, 149, 84] },
     });
 
-
-    // Final Payment Table
     const finalPaymentY = (doc as any).lastAutoTable.finalY + 15;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
     doc.text('Total Bayar Per Orang', 14, finalPaymentY);
-    (doc as any).autoTable({
+    autoTable(doc, {
         startY: finalPaymentY + 5,
         head: [['Nama', 'Total Bayar']],
         body: summary.participants.map(p => [p.name, formatRupiah(p.totalToPay)]),
@@ -137,13 +124,9 @@ export function SaveResultDialog({ children, summary, participants }: SaveResult
         headStyles: { fillColor: [229, 149, 84] },
     });
 
-
-    // Detailed Expenses
     const detailedExpensesY = (doc as any).lastAutoTable.finalY + 15;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
     doc.text('Rincian Pesanan per Orang', 14, detailedExpensesY);
-     (doc as any).autoTable({
+     autoTable(doc, {
         startY: detailedExpensesY + 5,
         head: [['Nama', 'Pesanan', 'Harga']],
         body: participants.flatMap(p => 

@@ -37,11 +37,9 @@ export function calculateSplit(
     return { name: p.name, totalItems, totalToPay };
   });
 
-
   return {
     totalBill,
     totalItemExpenses,
-    commonCosts,
     taxAmount,
     deliveryFee,
     discount,
