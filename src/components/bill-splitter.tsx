@@ -36,7 +36,6 @@ import {
 } from '@/components/ui/table';
 import type { Participant, Expense, Summary } from '@/types';
 import { calculateSplit } from '@/lib/calculator';
-import RoundingSuggestion from './rounding-suggestion';
 
 export default function BillSplitter() {
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -406,9 +405,6 @@ export default function BillSplitter() {
                             <span className="font-bold text-green-600">{t.to}</span>
                             <ArrowRight className='mx-2 h-4 w-4 text-muted-foreground' />
                             <span className='font-semibold'>{formatRupiah(t.amount)}</span>
-                          </div>
-                          <div className="mt-2 sm:mt-0">
-                            <RoundingSuggestion amount={t.amount} />
                           </div>
                         </li>
                       ))}
