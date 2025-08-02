@@ -27,7 +27,7 @@ const formatRupiah = (amount: number) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
-export function SaveResultDialog({ children, summary, items }: SaveResultDialogProps) {
+export function SaveResultDialog({ children, summary, items, participants }: SaveResultDialogProps) {
   const { toast } = useToast();
   
   const generateTxtContent = () => {
@@ -38,35 +38,57 @@ export function SaveResultDialog({ children, summary, items }: SaveResultDialogP
     content += `PPN: ${formatRupiah(summary.ppnAmount)}\n`;
     content += `Service Tax: ${formatRupiah(summary.serviceTaxAmount)}\n`;
     content += `Ongkir: ${formatRupiah(summary.deliveryFee)}\n`;
-    content += `Diskon: -${formatRupiah(summary.discount)}\n`;
+    content += `Total Diskon: -${formatRupiah(summary.totalDiscount)}\n`;
     content += `------------------------------------\n`;
-    content += `*Total Tagihan: ${formatRupiah(summary.totalBill)}*\n\n`;
+    content += `*Total Tagihan (Sebelum Pembulatan): ${formatRupiah(summary.totalBill)}*\n`;
+    if (summary.roundingDifference !== 0) {
+      content += `*Total Akhir (Setelah Pembulatan): ${formatRupiah(summary.grandTotal)}*\n`;
+    }
+    content += `\n`;
     
     content += `====================================\n`;
     content += `*💰 Rincian Bayar Per Orang (Super Detail):*\n\n`;
     summary.participants.forEach(p => {
+      // Defensive check to prevent error
+      const ppnShare = p.ppnPercentageShare ?? 0;
+      const serviceTaxSharePercent = p.serviceTaxPercentageShare ?? 0;
+
       content += `👤 *${p.name}*\n`;
       
       const participantItems = items.filter(item => item.sharedBy.includes(p.id));
       if (participantItems.length > 0) {
         content += `  *Pesanan:*\n`;
         participantItems.forEach(item => {
-          const cost = item.amount / item.sharedBy.length;
-          content += `    - ${item.description}: ${formatRupiah(cost)}\n`;
+          const cost = item.price * item.quantity / item.sharedBy.length;
+          const discountPerPerson = (item.discount.type === 'amount' ? item.discount.value / item.sharedBy.length : (item.price * item.quantity * item.discount.value / 100) / item.sharedBy.length);
+          content += `    - ${item.description} (x${item.quantity > 1 ? `${item.quantity}, ` : ''}Bagian): ${formatRupiah(cost)}\n`;
+          if (discountPerPerson > 0) {
+             content += `      (Diskon: -${formatRupiah(discountPerPerson)})\n`;
+          }
         });
       }
       
       content += `  *Rincian Biaya:*\n`;
       content += `    - Subtotal Pribadi: ${formatRupiah(p.subtotal)}\n`;
-      content += `    - Bagian PPN (${p.ppnPercentageShare.toFixed(2)}%): +${formatRupiah(p.ppnShare)}\n`;
+      content += `    - Bagian PPN (${ppnShare.toFixed(2)}%): +${formatRupiah(p.ppnShare)}\n`;
       if (p.serviceTaxShare > 0) {
-        content += `    - Bagian Service Tax ${p.serviceTaxPercentageShare > 0 ? `(${p.serviceTaxPercentageShare.toFixed(2)}%)` : ''}: +${formatRupiah(p.serviceTaxShare)}\n`;
+        content += `    - Bagian Service Tax ${serviceTaxSharePercent > 0 ? `(${serviceTaxSharePercent.toFixed(2)}%)` : ''}: +${formatRupiah(p.serviceTaxShare)}\n`;
       }
       content += `    - Bagian Ongkir: +${formatRupiah(p.deliveryFeeShare)}\n`;
-      content += `    - Bagian Diskon: -${formatRupiah(p.discountShare)}\n`;
+      content += `    - Bagian Diskon Global: -${formatRupiah(p.globalDiscountShare)}\n`;
       content += `  ------------------\n`;
       content += `  *Total Bayar: ${formatRupiah(p.totalToPay)}*\n\n`;
     });
+
+    if (summary.transactions.length > 0) {
+        content += `====================================\n`;
+        content += `*💳 Rincian Utang:*\n\n`;
+        summary.transactions.forEach(t => {
+            content += `  - *${t.from}* harus bayar *${formatRupiah(t.amount)}* ke *${t.to}*\n`;
+        });
+        content += `\n`;
+    }
+
     content += `====================================\n`;
     content += `_Dihitung dengan Kalkulator Receh ✨_`;
     return content;
@@ -100,8 +122,7 @@ export function SaveResultDialog({ children, summary, items }: SaveResultDialogP
         ['PPN', formatRupiah(summary.ppnAmount)],
         ['Service Tax', formatRupiah(summary.serviceTaxAmount)],
         ['Ongkir', formatRupiah(summary.deliveryFee)],
-        ['Diskon', `-${formatRupiah(summary.discount)}`],
-        // Perbaikan TypeScript: Menambahkan 'as const'
+        ['Total Diskon', `-${formatRupiah(summary.totalDiscount)}`],
         [{ content: 'Total Tagihan', styles: { fontStyle: 'bold' as const, fillColor: '#f2f2f2' } }, { content: formatRupiah(summary.totalBill), styles: { fontStyle: 'bold' as const, fillColor: '#f2f2f2' } }],
       ],
       theme: 'grid',
@@ -115,38 +136,29 @@ export function SaveResultDialog({ children, summary, items }: SaveResultDialogP
 
     summary.participants.forEach(p => {
         const participantItems = items.filter(item => item.sharedBy.includes(p.id));
-        const bodyData: any[] = []; // Menggunakan 'any[]' untuk fleksibilitas
+        const bodyData: any[] = []; 
 
         if (participantItems.length > 0) {
-            // Perbaikan TypeScript: Menambahkan 'as const'
             bodyData.push([{ content: 'Pesanan:', colSpan: 2, styles: { fontStyle: 'bold' as const } }]);
             participantItems.forEach(item => {
-                const cost = item.amount / item.sharedBy.length;
+                const cost = (item.price * item.quantity) / item.sharedBy.length;
                 bodyData.push([`  - ${item.description}`, formatRupiah(cost)]);
             });
         }
         
         bodyData.push(
-            // Perbaikan TypeScript: Menambahkan 'as const'
             [{ content: 'Rincian Biaya:', colSpan: 2, styles: { fontStyle: 'bold' as const } }],
             ['  - Subtotal Pribadi', formatRupiah(p.subtotal)],
-            [`  - Bagian PPN (${p.ppnPercentageShare.toFixed(2)}%)`, `+${formatRupiah(p.ppnShare)}`],
-        );
-        if (p.serviceTaxShare > 0) {
-            const serviceLabel = p.serviceTaxPercentageShare > 0 ? `  - Bagian Service Tax (${p.serviceTaxPercentageShare.toFixed(2)}%)` : '  - Bagian Service Tax';
-            bodyData.push([serviceLabel, `+${formatRupiah(p.serviceTaxShare)}`]);
-        }
-        bodyData.push(
+            [`  - Bagian PPN`, `+${formatRupiah(p.ppnShare)}`],
+            ['  - Bagian Service Tax', `+${formatRupiah(p.serviceTaxShare)}`],
             ['  - Bagian Ongkir', `+${formatRupiah(p.deliveryFeeShare)}`],
-            ['  - Bagian Diskon', `-${formatRupiah(p.discountShare)}`],
+            ['  - Bagian Diskon', `-${formatRupiah(p.globalDiscountShare)}`],
         );
 
         autoTable(doc, {
             startY: lastY,
-            // Perbaikan TypeScript: Menambahkan 'as const'
             head: [[{ content: p.name, colSpan: 2, styles: { fontStyle: 'bold' as const, fillColor: [22, 163, 74], textColor: [255, 255, 255] } }]],
             body: bodyData,
-            // Perbaikan TypeScript: Menambahkan 'as const'
             foot: [[{ content: 'Total Bayar', styles: { fontStyle: 'bold' as const } }, { content: formatRupiah(p.totalToPay), styles: { fontStyle: 'bold' as const } }]],
             theme: 'striped',
             showFoot: 'lastPage',

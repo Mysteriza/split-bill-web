@@ -1,4 +1,4 @@
-import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails } from '@/types';
+import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, Transaction, DiscountDetails } from '@/types';
 
 export function calculateSplit(
   participants: SessionParticipant[],
@@ -6,91 +6,88 @@ export function calculateSplit(
   ppnPercentage: number,
   serviceTax: ServiceTaxDetails,
   deliveryFee: number,
-  discount: number
+  globalDiscount: DiscountDetails,
+  rounding: number,
+  payerId?: string
 ): Summary | null {
-  if (participants.length === 0) {
-    return null;
-  }
+  if (participants.length === 0) return null;
 
-  const participantSubtotals: { [key: string]: number } = {};
-  participants.forEach(p => participantSubtotals[p.id] = 0);
+  const participantSubtotals: Map<string, number> = new Map(participants.map(p => [p.id, 0]));
+  let totalItemExpenses = 0;
+  let totalItemDiscount = 0;
 
   items.forEach(item => {
+    const itemTotalBeforeDiscount = item.price * item.quantity;
+    let itemDiscountAmount = 0;
+    if (item.discount.type === 'percentage') {
+      itemDiscountAmount = itemTotalBeforeDiscount * (item.discount.value / 100);
+    } else {
+      itemDiscountAmount = item.discount.value;
+    }
+    const itemTotalAfterDiscount = itemTotalBeforeDiscount - itemDiscountAmount;
+    totalItemDiscount += itemDiscountAmount;
+    
     if (item.sharedBy.length > 0) {
-      const costPerPerson = item.amount / item.sharedBy.length;
-      item.sharedBy.forEach(participantId => {
-        if (participantSubtotals[participantId] !== undefined) {
-          participantSubtotals[participantId] += costPerPerson;
-        }
+      const costPerPerson = itemTotalAfterDiscount / item.sharedBy.length;
+      item.sharedBy.forEach(pId => {
+        participantSubtotals.set(pId, (participantSubtotals.get(pId) || 0) + costPerPerson);
       });
     }
   });
 
-  const totalItemExpenses = Object.values(participantSubtotals).reduce((sum, val) => sum + val, 0);
-
-  if (totalItemExpenses === 0) {
-     return {
-        totalBill: Math.max(0, deliveryFee - discount),
-        totalItemExpenses: 0,
-        ppnAmount: 0,
-        serviceTaxAmount: 0,
-        deliveryFee,
-        discount,
-        participants: participants.map(p => ({ 
-            id: p.id, name: p.name, subtotal: 0, 
-            ppnShare: 0, serviceTaxShare: 0, deliveryFeeShare: 0, discountShare: 0,
-            ppnPercentageShare: 0, serviceTaxPercentageShare: 0, 
-            totalToPay: 0 
-        })),
-     };
+  totalItemExpenses = Array.from(participantSubtotals.values()).reduce((sum, val) => sum + val, 0);
+  
+  let globalDiscountAmount = 0;
+  if (globalDiscount.type === 'percentage') {
+    globalDiscountAmount = totalItemExpenses * (globalDiscount.value / 100);
+  } else {
+    globalDiscountAmount = globalDiscount.value;
   }
+  const totalDiscount = totalItemDiscount + globalDiscountAmount;
 
-  const ppnAmount = (totalItemExpenses * ppnPercentage) / 100;
+  const baseForTax = totalItemExpenses;
+  const ppnAmount = (baseForTax * ppnPercentage) / 100;
   
   let serviceTaxAmount = 0;
   if (serviceTax.type === 'percentage') {
-    serviceTaxAmount = (totalItemExpenses * serviceTax.value) / 100;
+    serviceTaxAmount = (baseForTax * serviceTax.value) / 100;
   } else {
     serviceTaxAmount = serviceTax.value;
   }
   
-  const totalBill = totalItemExpenses + ppnAmount + serviceTaxAmount + deliveryFee - discount;
+  const totalBill = totalItemExpenses + ppnAmount + serviceTaxAmount + deliveryFee - globalDiscountAmount;
 
   const participantSummaries = participants.map(p => {
-    const subtotal = participantSubtotals[p.id];
+    const subtotal = participantSubtotals.get(p.id) || 0;
     const proportion = totalItemExpenses > 0 ? subtotal / totalItemExpenses : 0;
     
     const ppnShare = proportion * ppnAmount;
     const serviceTaxShare = proportion * serviceTaxAmount;
     const deliveryFeeShare = proportion * deliveryFee;
-    const discountShare = proportion * discount;
+    const globalDiscountShare = proportion * globalDiscountAmount;
 
-    const ppnPercentageShare = proportion * ppnPercentage;
-    const serviceTaxPercentageShare = serviceTax.type === 'percentage' ? proportion * serviceTax.value : 0;
+    const finalShare = subtotal + ppnShare + serviceTaxShare + deliveryFeeShare - globalDiscountShare;
+    
+    let totalToPay = finalShare;
+    if (rounding > 0 && finalShare > 0) {
+      totalToPay = Math.ceil(finalShare / rounding) * rounding;
+    }
 
-    const totalToPay = subtotal + ppnShare + serviceTaxShare + deliveryFeeShare - discountShare;
-
-    return {
-      id: p.id,
-      name: p.name,
-      subtotal,
-      ppnShare,
-      serviceTaxShare,
-      deliveryFeeShare,
-      discountShare,
-      ppnPercentageShare,
-      serviceTaxPercentageShare,
-      totalToPay,
-    };
+    return { id: p.id, name: p.name, subtotal, ppnShare, serviceTaxShare, deliveryFeeShare, globalDiscountShare, finalShare, totalToPay };
   });
 
-  return {
-    totalBill,
-    totalItemExpenses,
-    ppnAmount,
-    serviceTaxAmount,
-    deliveryFee,
-    discount,
-    participants: participantSummaries,
-  };
+  const grandTotal = participantSummaries.reduce((sum, p) => sum + p.totalToPay, 0);
+  const roundingDifference = grandTotal - totalBill;
+
+  let transactions: Transaction[] = [];
+  if (payerId && participants.length > 1) {
+      const payer = participants.find(p => p.id === payerId);
+      if (payer) {
+          transactions = participantSummaries
+              .filter(p => p.id !== payerId && p.totalToPay > 0)
+              .map(p => ({ from: p.name, to: payer.name, amount: p.totalToPay }));
+      }
+  }
+
+  return { totalBill, grandTotal, roundingDifference, totalItemExpenses, ppnAmount, serviceTaxAmount, deliveryFee, totalDiscount, participants: participantSummaries, transactions };
 }
