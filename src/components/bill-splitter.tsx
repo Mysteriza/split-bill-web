@@ -56,7 +56,11 @@ function TutorialDialog() {
     <Dialog>
       <DialogTrigger asChild><Button variant="link" className="p-0 h-auto text-muted-foreground gap-1"><HelpCircle className="h-4 w-4" /> Tutorial</Button></DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><HelpCircle/> Cara Menggunakan Kalkulator Receh</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><HelpCircle/> Cara Menggunakan Kalkulator Receh</DialogTitle>
+           {/* Perbaikan: Tambahkan DialogDescription */}
+          <DialogDescription>Panduan singkat untuk menggunakan fitur-fitur utama aplikasi.</DialogDescription>
+        </DialogHeader>
         <div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4">
             <p>Selamat datang! Berikut alur kerja baru yang lebih cepat:</p>
             <div>
@@ -158,7 +162,7 @@ function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { 
                 <div className="space-y-1 max-h-64 overflow-y-auto">
                     {sessionParticipants.map(p => (
                         <div key={p.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer" onClick={() => handleCheckChange(p.id, !selectedIds.has(p.id))}>
-                            <Checkbox id={`p-${p.id}`} checked={selectedIds.has(p.id)} />
+                            <Checkbox id={`p-${p.id}`} checked={selectedIds.has(p.id)} onCheckedChange={(checked) => handleCheckChange(p.id, !!checked)} />
                             <Label htmlFor={`p-${p.id}`} className="flex-1 font-normal text-sm cursor-pointer" dangerouslySetInnerHTML={{ __html: p.name }}></Label>
                         </div>
                     ))}
@@ -272,8 +276,9 @@ export function BillSplitter() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid lg:grid-cols-2 gap-6 items-start">
+    // Optimalisasi Mobile: Jarak utama dikurangi
+    <div className="space-y-4">
+      <div className="grid lg:grid-cols-2 gap-4 items-start">
         <div className="space-y-4">
           <Card>
             <CardHeader>
@@ -327,11 +332,11 @@ export function BillSplitter() {
             </CardFooter>
           </Card>
         </div>
-        <div className="space-y-4 sticky top-6">
+        <div className="space-y-4 sticky top-4">
             <Card>
                 <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan & Total</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2"><Label htmlFor="ppn" className="text-xs">PPN (%)</Label><Input id="ppn" type="number" placeholder="0" value={ppn} onChange={e => setPpn(e.target.value)} /></div>
                         <div className="space-y-2">
                             <Label className="text-xs">Service Tax</Label>
@@ -364,10 +369,7 @@ export function BillSplitter() {
             <motion.div><Card className="shadow-lg">
                   <CardHeader className="flex flex-row justify-between items-center">
                     <div><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle></div>
-                    {/* Perbaikan: Tambahkan prop 'items' yang hilang */}
-                    <SaveResultDialog summary={summary} items={items} participants={sessionParticipants}>
-                        <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan</Button>
-                    </SaveResultDialog>
+                    <SaveResultDialog summary={summary} items={items} participants={sessionParticipants}><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan</Button></SaveResultDialog>
                   </CardHeader>
                   <CardContent>
                       <Accordion type="multiple" className="w-full">
