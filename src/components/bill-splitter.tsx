@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DOMPurify from 'dompurify';
 import {
@@ -10,31 +10,24 @@ import {
   X,
   FileText,
   Download,
-  Save,
   Info,
   BookUser,
-  Pencil,
   HelpCircle,
+  Users,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -45,78 +38,62 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator";
 import { useToast } from '@/hooks/use-toast';
-import type { Participant, Expense, Summary } from '@/types';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails } from '@/types';
 import { calculateSplit } from '@/lib/calculator';
 import { SaveResultDialog } from './save-result-dialog';
 
-// -- Komponen Dialog Bantuan/Tutorial --
 function TutorialDialog() {
-  return (
+    return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="link" className="p-0 h-auto text-muted-foreground gap-1">
-          <HelpCircle className="h-4 w-4" /> Tutorial
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild><Button variant="link" className="p-0 h-auto text-muted-foreground gap-1"><HelpCircle className="h-4 w-4" /> Tutorial</Button></DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><HelpCircle/> Cara Menggunakan Kalkulator Receh</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><HelpCircle/> Cara Menggunakan Kalkulator Receh</DialogTitle></DialogHeader>
         <div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4">
-            <p>Selamat datang! Berikut panduan singkat untuk menggunakan aplikasi ini:</p>
+            <p>Selamat datang! Berikut alur kerja baru yang lebih cepat:</p>
             <div>
-                <h4 className="font-semibold mb-1">1. Tambah Peserta</h4>
-                <p className="text-muted-foreground">Ketik nama teman di kolom <span className="font-semibold text-primary">"Nama Peserta Baru"</span> lalu tekan Enter atau tombol `+`. Anda juga bisa menambahkan dari daftar kontak yang tersimpan melalui tombol <span className="font-semibold text-primary">"Kelola Kontak"</span>.</p>
+                <h4 className="font-semibold mb-1">1. Tambahkan Semua Peserta</h4>
+                <p className="text-muted-foreground">Masukkan semua nama teman yang ikut patungan di bagian atas. Anda juga bisa menambahkan dari "Buku Kontak".</p>
             </div>
              <div>
-                <h4 className="font-semibold mb-1">2. Masukkan Pesanan</h4>
-                <p className="text-muted-foreground">Di dalam kartu setiap peserta, masukkan <span className="font-semibold text-primary">nama item</span> dan <span className="font-semibold text-primary">harganya</span>, lalu tekan `+`. Anda bisa mengedit atau menghapus item yang sudah ada.</p>
+                <h4 className="font-semibold mb-1">2. Catat Semua Item dari Struk</h4>
+                <p className="text-muted-foreground">Di bagian "Daftar Pesanan", masukkan semua item dan harganya satu per satu. Tekan `Enter` setelah mengisi harga untuk pindah ke baris item baru secara otomatis.</p>
             </div>
-             <div>
-                <h4 className="font-semibold mb-1">3. Atur Biaya Tambahan</h4>
-                <p className="text-muted-foreground">Di bagian kanan, masukkan biaya seperti <span className="font-semibold text-primary">PPN (%)</span>, <span className="font-semibold text-primary">Service Tax (%)</span>, Ongkir, dan Diskon jika ada.</p>
-            </div>
-             <div>
-                <h4 className="font-semibold mb-1">4. Lihat Hasilnya</h4>
-                <p className="text-muted-foreground">Semua perhitungan terjadi secara <span className="font-semibold text-primary">real-time</span>. Anda bisa langsung melihat total tagihan dan berapa yang harus dibayar setiap orang di kartu "Hasil Patungan".</p>
-            </div>
-             <div>
-                <h4 className="font-semibold mb-1">5. Simpan & Bagikan</h4>
-                <p className="text-muted-foreground">Gunakan tombol <span className="font-semibold text-primary">"Simpan"</span> untuk mengunduh PDF atau menyalin ringkasan teks yang rapi untuk dibagikan ke teman-teman Anda.</p>
-            </div>
-
-            <Separator className="my-4" />
             <div>
-                <h4 className="font-semibold mb-2">🤔 Mengapa Tidak Ada Fitur Scan Struk?</h4>
-                {/* Penyesuaian: Menggunakan tag <strong> untuk cetak tebal */}
-                <div className="space-y-2 text-muted-foreground">
-                    <p>Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk demi <strong>akurasi dan kebebasan pengguna</strong>.</p>
-                    <p>Teknologi scan (OCR) dan AI, meskipun canggih, seringkali tidak 100% akurat dalam membaca struk yang berbeda-beda formatnya, lecek, atau buram. Kesalahan kecil pada angka bisa menyebabkan perhitungan menjadi fatal.</p>
-                    <p>Metode input manual saat ini memastikan <strong>Anda memiliki kontrol penuh</strong> untuk menetapkan setiap item ke peserta yang benar, sesuatu yang tidak bisa dilakukan oleh AI secara otomatis. Ini adalah inti dari proses patungan yang adil.</p>
-                    <p>Selain itu, layanan scan AI yang akurat memerlukan biaya, yang akan memaksa aplikasi ini menjadi berbayar. Dengan tetap sederhana, <strong>Kalkulator Receh akan selalu gratis, open-source, dan dapat diandalkan</strong>.</p>
-                </div>
+                <h4 className="font-semibold mb-1">3. Tandai Pemilik Item</h4>
+                <p className="text-muted-foreground">Di samping setiap item, klik tombol <span className="font-semibold text-primary">"Tandai"</span>. Centang nama teman yang memesan item tersebut. Jika di-sharing, centang semua nama yang ikut patungan.</p>
             </div>
-
+             <div>
+                <h4 className="font-semibold mb-1">4. Atur Biaya Tambahan</h4>
+                <p className="text-muted-foreground">Isi PPN, Service Tax, Ongkir, dan Diskon di kolom sebelah kanan.</p>
+            </div>
+             <div>
+                <h4 className="font-semibold mb-1">5. Selesai!</h4>
+                <p className="text-muted-foreground">Semua perhitungan terjadi secara real-time. Anda bisa langsung melihat hasilnya dan menyimpannya.</p>
+            </div>
         </div>
-        <DialogFooter>
-          <DialogClose asChild><Button>Mengerti!</Button></DialogClose>
-        </DialogFooter>
+        <DialogFooter><DialogClose asChild><Button>Mengerti!</Button></DialogClose></DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function ContactsDialog({ onSelect, contacts, setContacts }: {
-  onSelect: (contact: Pick<Participant, 'id' | 'name'>) => void;
-  contacts: Pick<Participant, 'id' | 'name'>[];
-  setContacts: React.Dispatch<React.SetStateAction<Pick<Participant, 'id' | 'name'>[]>>;
+  onSelect: (contact: Pick<SessionParticipant, 'id' | 'name'>) => void;
+  contacts: Pick<SessionParticipant, 'id' | 'name'>[];
+  setContacts: React.Dispatch<React.SetStateAction<Pick<SessionParticipant, 'id' | 'name'>[]>>;
 }) {
   const [newContactName, setNewContactName] = useState('');
   const { toast } = useToast();
   const CONTACTS_KEY = 'kalkulatorReceh_contacts';
-
   const addContact = () => {
     const sanitizedName = DOMPurify.sanitize(newContactName.trim());
     if (sanitizedName && !contacts.some(c => c.name === sanitizedName)) {
@@ -127,25 +104,19 @@ function ContactsDialog({ onSelect, contacts, setContacts }: {
       setNewContactName('');
     }
   };
-
   const removeContact = (id: string) => {
     const updatedContacts = contacts.filter(c => c.id !== id);
     setContacts(updatedContacts);
     localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts));
     toast({ description: "Kontak telah dihapus." });
   };
-
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm"><BookUser className="mr-2 h-4 w-4" /> Kelola Kontak</Button>
-      </DialogTrigger>
+      <DialogTrigger asChild><Button variant="outline" size="sm"><BookUser className="mr-2 h-4 w-4" /> Kontak</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Buku Kontak</DialogTitle>
-          <DialogDescription>
-            Pilih kontak untuk ditambahkan ke sesi ini, atau kelola daftar kontak permanen Anda.
-          </DialogDescription>
+          <DialogDescription>Pilih kontak untuk ditambahkan ke sesi ini.</DialogDescription>
         </DialogHeader>
         <div className="flex gap-2 my-4">
           <Input placeholder="Nama Kontak Baru" value={newContactName} onChange={e => setNewContactName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addContact()} />
@@ -167,154 +138,137 @@ function ContactsDialog({ onSelect, contacts, setContacts }: {
   );
 }
 
-function EditExpenseDialog({ expense, onSave, children }: { expense: Expense, onSave: (updatedExpense: Expense) => void, children: React.ReactNode }) {
-    const [description, setDescription] = useState(expense.description);
-    const [amount, setAmount] = useState(new Intl.NumberFormat('id-ID').format(expense.amount));
-
-    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        const numericValue = parseInt(rawValue.replace(/[^0-9]/g, ''), 10);
-        if (isNaN(numericValue)) {
-            setAmount('');
-        } else {
-            setAmount(new Intl.NumberFormat('id-ID').format(numericValue));
-        }
+function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { item: BillItem, sessionParticipants: SessionParticipant[], onTag: (itemId: string, participantIds: string[]) => void, children: React.ReactNode }) {
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(item.sharedBy));
+    const handleCheckChange = (participantId: string, checked: boolean) => {
+        const newIds = new Set(selectedIds);
+        if (checked) newIds.add(participantId);
+        else newIds.delete(participantId);
+        setSelectedIds(newIds);
     };
-
-    const handleSave = () => {
-        const sanitizedDescription = DOMPurify.sanitize(description.trim());
-        const numericAmount = Number(amount.replace(/[^0-9]/g, '')) || 0;
-        if (sanitizedDescription && numericAmount > 0) {
-            onSave({ ...expense, description: sanitizedDescription, amount: numericAmount });
-        }
-    };
-    
+    const handleSave = () => onTag(item.id, Array.from(selectedIds));
     return (
         <Dialog>
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
-                <DialogHeader><DialogTitle>Edit Item</DialogTitle></DialogHeader>
-                <div className="space-y-4">
-                    <Input placeholder="Nama Item" value={description} onChange={(e) => setDescription(e.target.value)} />
-                    <Input placeholder="Harga" value={amount} onChange={handleAmountChange} />
+                <DialogHeader>
+                    <DialogTitle>Tandai Peserta untuk Item:</DialogTitle>
+                    <DialogDescription dangerouslySetInnerHTML={{ __html: item.description }}/>
+                </DialogHeader>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {sessionParticipants.map(p => (
+                        <div key={p.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer" onClick={() => handleCheckChange(p.id, !selectedIds.has(p.id))}>
+                            <Checkbox id={`p-${p.id}`} checked={selectedIds.has(p.id)} />
+                            <Label htmlFor={`p-${p.id}`} className="flex-1 font-normal text-sm cursor-pointer" dangerouslySetInnerHTML={{ __html: p.name }}></Label>
+                        </div>
+                    ))}
                 </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button variant="ghost">Batal</Button></DialogClose>
-                    <DialogClose asChild><Button onClick={handleSave}>Simpan Perubahan</Button></DialogClose>
-                </DialogFooter>
+                <DialogFooter><DialogClose asChild><Button onClick={handleSave}>Simpan Tanda</Button></DialogClose></DialogFooter>
             </DialogContent>
         </Dialog>
+    )
+}
+
+function ParticipantTagList({ item, sessionParticipants }: { item: BillItem; sessionParticipants: SessionParticipant[] }) {
+    if (item.sharedBy.length === 0) {
+        return (
+            <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                    <TooltipTrigger><AlertTriangle className="h-4 w-4 text-amber-500" /></TooltipTrigger>
+                    <TooltipContent><p>Item ini belum ditandai oleh siapa pun.</p></TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
+    const taggedParticipants = sessionParticipants.filter(p => item.sharedBy.includes(p.id));
+    return (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            {taggedParticipants.slice(0, 3).map(p => (
+                <span key={p.id} className="bg-muted px-2 py-0.5 rounded-full" dangerouslySetInnerHTML={{ __html: p.name.substring(0, 3) }}></span>
+            ))}
+            {taggedParticipants.length > 3 && ( <span className="font-bold">+{taggedParticipants.length - 3}</span> )}
+        </div>
     );
 }
 
 export function BillSplitter() {
   const { toast } = useToast();
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [sessionParticipants, setSessionParticipants] = useState<SessionParticipant[]>([]);
+  const [items, setItems] = useState<BillItem[]>([]);
   const [newParticipantName, setNewParticipantName] = useState('');
-  
+  const [newItemDesc, setNewItemDesc] = useState('');
+  const [newItemAmount, setNewItemAmount] = useState('');
   const [ppn, setPpn] = useState('');
-  const [serviceTax, setServiceTax] = useState('');
+  const [serviceTaxType, setServiceTaxType] = useState<'amount' | 'percentage'>('percentage');
+  const [serviceTaxValue, setServiceTaxValue] = useState('');
   const [deliveryFee, setDeliveryFee] = useState('');
   const [discount, setDiscount] = useState('');
   const [summary, setSummary] = useState<Summary | null>(null);
-
-  const [contacts, setContacts] = useState<Pick<Participant, 'id' | 'name'>[]>([]);
+  const [contacts, setContacts] = useState<Pick<SessionParticipant, 'id' | 'name'>[]>([]);
   const CONTACTS_KEY = 'kalkulatorReceh_contacts';
-  
+  const newItemDescRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     try {
       const savedContacts = localStorage.getItem(CONTACTS_KEY);
-      if (savedContacts) {
-        setContacts(JSON.parse(savedContacts));
-      }
-    } catch (error) {
-      console.error("Failed to load contacts", error);
-    }
+      if (savedContacts) setContacts(JSON.parse(savedContacts));
+    } catch (error) { console.error("Failed to load contacts", error); }
   }, []);
-
-  const addParticipantFromContact = (contact: Pick<Participant, 'id' | 'name'>) => {
-    if (!participants.some(p => p.name === contact.name)) {
-        const newParticipant: Participant = { ...contact, expenses: [] };
-        setParticipants(prev => [...prev, newParticipant]);
-        toast({ description: `${contact.name} ditambahkan ke sesi.` });
-    } else {
-        toast({ variant: "destructive", description: `${contact.name} sudah ada di sesi.` });
-    }
-  };
-
-  const parseFormattedNumber = (value: string): number => {
-    return Number(value.replace(/[^0-9]/g, '')) || 0;
-  }
+  
+  const parseFormattedNumber = (value: string): number => Number(value.replace(/[^0-9]/g, '')) || 0;
   
   const formatRupiah = useCallback((amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(Math.round(amount));
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
   }, []);
 
   const ppnValue = useMemo(() => parseFloat(ppn) || 0, [ppn]);
-  const serviceTaxValue = useMemo(() => parseFloat(serviceTax) || 0, [serviceTax]);
   const deliveryFeeValue = useMemo(() => parseFormattedNumber(deliveryFee), [deliveryFee]);
   const discountValue = useMemo(() => parseFormattedNumber(discount), [discount]);
+  const serviceTaxDetails: ServiceTaxDetails = useMemo(() => ({
+    type: serviceTaxType,
+    value: serviceTaxType === 'percentage' ? parseFloat(serviceTaxValue) || 0 : parseFormattedNumber(serviceTaxValue),
+  }), [serviceTaxType, serviceTaxValue]);
 
   useEffect(() => {
-    const result = calculateSplit(participants, ppnValue, serviceTaxValue, deliveryFeeValue, discountValue);
+    const result = calculateSplit(sessionParticipants, items, ppnValue, serviceTaxDetails, deliveryFeeValue, discountValue);
     setSummary(result);
-  }, [participants, ppnValue, serviceTaxValue, deliveryFeeValue, discountValue]);
+  }, [sessionParticipants, items, ppnValue, serviceTaxDetails, deliveryFeeValue, discountValue]);
 
-  const addParticipant = () => {
-    const sanitizedName = DOMPurify.sanitize(newParticipantName.trim());
-    if (sanitizedName && !participants.some(p => p.name === sanitizedName)) {
-      const newParticipant: Participant = { id: crypto.randomUUID(), name: sanitizedName, expenses: [] };
-      setParticipants([...participants, newParticipant]);
-      
+  const addParticipant = (name: string, id: string = crypto.randomUUID()) => {
+    const sanitizedName = DOMPurify.sanitize(name.trim());
+    if (sanitizedName && !sessionParticipants.some(p => p.name === sanitizedName)) {
+      setSessionParticipants(prev => [...prev, { id, name: sanitizedName }]);
       if (!contacts.some(c => c.name === sanitizedName)) {
-          const updatedContacts = [...contacts, { id: newParticipant.id, name: newParticipant.name }];
+          const updatedContacts = [...contacts, { id, name: sanitizedName }];
           setContacts(updatedContacts);
           localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts));
       }
-
-      setNewParticipantName('');
     }
-  };
-
-  const removeParticipant = (id: string) => {
-    setParticipants((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const addExpense = (participantId: string, description: string, amount: number) => {
-    const sanitizedDescription = DOMPurify.sanitize(description.trim());
-    if (sanitizedDescription && amount > 0) {
-      const newExpense: Expense = { id: crypto.randomUUID(), description: sanitizedDescription, amount };
-      setParticipants(
-        participants.map((p) =>
-          p.id === participantId
-            ? { ...p, expenses: [...p.expenses, newExpense] }
-            : p
-        )
-      );
-    }
-  };
-
-  const removeExpense = (participantId: string, expenseId: string) => {
-    setParticipants(
-      participants.map((p) =>
-        p.id === participantId
-          ? { ...p, expenses: p.expenses.filter((e) => e.id !== expenseId) }
-          : p
-      )
-    );
   };
   
-  const editExpense = (participantId: string, updatedExpense: Expense) => {
-    setParticipants(participants.map(p => 
-        p.id === participantId 
-        ? { ...p, expenses: p.expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e) }
-        : p
-    ));
+  const handleAddParticipant = () => { addParticipant(newParticipantName); setNewParticipantName(''); };
+  const removeParticipant = (id: string) => {
+    setSessionParticipants(prev => prev.filter(p => p.id !== id));
+    setItems(prev => prev.map(item => ({ ...item, sharedBy: item.sharedBy.filter(pId => pId !== id) })));
+  };
+  
+  const handleAddItem = () => {
+    const sanitizedDesc = DOMPurify.sanitize(newItemDesc.trim());
+    const numericAmount = parseFormattedNumber(newItemAmount);
+    if (sanitizedDesc && numericAmount > 0) {
+      setItems(prev => [...prev, {id: crypto.randomUUID(), description: sanitizedDesc, amount: numericAmount, sharedBy: []}]);
+      setNewItemDesc('');
+      setNewItemAmount('');
+      newItemDescRef.current?.focus();
+    }
+  };
+  
+  const removeItem = (id: string) => setItems(prev => prev.filter(item => item.id !== id));
+  const handleTagParticipant = (itemId: string, participantIds: string[]) => setItems(prev => prev.map(item => item.id === itemId ? {...item, sharedBy: participantIds} : item));
+
+  const handleAmountChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numericValue = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10);
+    setter(isNaN(numericValue) ? '' : new Intl.NumberFormat('id-ID').format(numericValue));
   };
 
   return (
@@ -322,68 +276,82 @@ export function BillSplitter() {
       <div className="grid lg:grid-cols-2 gap-6 items-start">
         <div className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-3">
-                <UserPlus className="h-6 w-6" /> Peserta & Pesanan
-              </CardTitle>
-              <TutorialDialog />
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row-reverse gap-2">
-                <div className="flex-grow flex gap-2">
-                   <Input id="new-participant-input" placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addParticipant()} />
-                   <Button onClick={addParticipant} aria-label="Tambah Peserta"><PlusCircle className="h-4 w-4" /></Button>
-                </div>
-                <div className="sm:mb-0 mb-2">
-                    <ContactsDialog onSelect={addParticipantFromContact} contacts={contacts} setContacts={setContacts}/>
-                </div>
+            <CardHeader>
+              <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta Sesi Ini</CardTitle><TutorialDialog /></div>
+              <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
+                <div className="flex-grow flex gap-2"><Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} /><Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button></div>
+                <div className="sm:mb-0 mb-2"><ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/></div>
               </div>
-            </CardContent>
+            </CardHeader>
+            {sessionParticipants.length > 0 && (
+              <CardContent className="flex flex-wrap gap-2">
+                <AnimatePresence>
+                  {sessionParticipants.map(p => (
+                    <motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                       <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium">
+                          <span dangerouslySetInnerHTML={{ __html: p.name }} /><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button>
+                       </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </CardContent>
+            )}
           </Card>
-          <AnimatePresence>
-            {participants.map((p) => (
-              <motion.div key={p.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
-                <ParticipantCard 
-                    participant={p} 
-                    onRemoveParticipant={removeParticipant}
-                    onAddExpense={addExpense}
-                    onRemoveExpense={removeExpense}
-                    onEditExpense={editExpense}
-                    formatRupiah={formatRupiah}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-3"><FileText className="h-6 w-6" /> Daftar Pesanan</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+                <AnimatePresence>
+                  {items.map(item => (
+                    <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}>
+                        <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                            <div>
+                                <p className="font-medium text-sm" dangerouslySetInnerHTML={{__html: item.description}}></p>
+                                <p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.amount)}</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                               <ParticipantTagList item={item} sessionParticipants={sessionParticipants} />
+                               <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog>
+                               <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </div>
+                        </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+            </CardContent>
+            <CardFooter className="bg-muted/30 p-3">
+                 <div className="flex w-full gap-2 items-center">
+                    <Input ref={newItemDescRef} placeholder="Nama item..." value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} />
+                    <Input placeholder="Harga..." value={newItemAmount} onChange={handleAmountChange(setNewItemAmount)} onKeyDown={(e) => {if (e.key === 'Enter') handleAddItem();}} />
+                    <Button className="px-4" onClick={handleAddItem}><PlusCircle className="h-5 w-5" /></Button>
+                 </div>
+            </CardFooter>
+          </Card>
         </div>
-
         <div className="space-y-4 sticky top-6">
             <Card>
                 <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan & Total</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label htmlFor="ppn" className="text-xs">PPN (%)</Label><Input id="ppn" type="number" placeholder="0" value={ppn} onChange={e => setPpn(e.target.value)} /></div>
                         <div className="space-y-2">
-                            <Label htmlFor="ppn" className="text-xs">PPN (%)</Label>
-                            <Input id="ppn" type="number" placeholder="12" value={ppn} onChange={e => setPpn(e.target.value)} />
+                            <Label className="text-xs">Service Tax</Label>
+                            <div className="flex items-center gap-2">
+                                <RadioGroup value={serviceTaxType} onValueChange={(v: 'amount' | 'percentage') => setServiceTaxType(v)} className="flex">
+                                    <div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="st-percentage" /><Label htmlFor="st-percentage" className="text-xs font-normal">%</Label></div>
+                                    <div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="st-amount" /><Label htmlFor="st-amount" className="text-xs font-normal">Rp</Label></div>
+                                </RadioGroup>
+                                <Input type={serviceTaxType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={serviceTaxValue} onChange={serviceTaxType === 'percentage' ? e => setServiceTaxValue(e.target.value) : handleAmountChange(setServiceTaxValue)} />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="serviceTax" className="text-xs">Service Tax (%)</Label>
-                            <Input id="serviceTax" type="number" placeholder="5" value={serviceTax} onChange={e => setServiceTax(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label>
-                            <Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="discount" className="text-xs">Diskon (Rp)</Label>
-                            <Input id="discount" type="text" inputMode="decimal" placeholder="0" value={discount} onChange={(e) => setDiscount(e.target.value)} />
-                        </div>
+                        <div className="space-y-2"><Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label><Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={handleAmountChange(setDeliveryFee)} /></div>
+                         <div className="space-y-2"><Label htmlFor="discount" className="text-xs">Diskon (Rp)</Label><Input id="discount" type="text" inputMode="decimal" placeholder="0" value={discount} onChange={handleAmountChange(setDiscount)} /></div>
                     </div>
                     {summary && <Separator />}
                     {summary && (
                       <div className='space-y-2 text-sm'>
                            <div className="flex justify-between"><span className="text-muted-foreground">Subtotal Pesanan</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div>
                            <div className="flex justify-between"><span className="text-muted-foreground">PPN ({ppnValue}%)</span><span>{formatRupiah(summary.ppnAmount)}</span></div>
-                           <div className="flex justify-between"><span className="text-muted-foreground">Service Tax ({serviceTaxValue}%)</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div>
+                           <div className="flex justify-between"><span className="text-muted-foreground">Service Tax</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span>{formatRupiah(summary.deliveryFee)}</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Diskon</span><span className='text-destructive'>-{formatRupiah(summary.discount)}</span></div>
                           <Separator />
@@ -392,31 +360,57 @@ export function BillSplitter() {
                     )}
                 </CardContent>
             </Card>
-
-          {summary && participants.length > 0 ? (
-            <motion.div>
-                <Card className="shadow-lg">
+          {summary && sessionParticipants.length > 0 ? (
+            <motion.div><Card className="shadow-lg">
                   <CardHeader className="flex flex-row justify-between items-center">
                     <div><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle></div>
-                    <SaveResultDialog summary={summary} participants={participants}>
-                       <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan</Button>
+                    {/* Perbaikan: Tambahkan prop 'items' yang hilang */}
+                    <SaveResultDialog summary={summary} items={items} participants={sessionParticipants}>
+                        <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan</Button>
                     </SaveResultDialog>
                   </CardHeader>
                   <CardContent>
-                      <Table>
-                        <TableHeader><TableRow><TableHead className="text-xs">Nama</TableHead><TableHead className="text-right text-xs">Total Bayar</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                          {summary.participants.map((p) => (
-                            <TableRow key={p.name}>
-                              <TableCell className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(p.name) }}></TableCell>
-                              <TableCell className="text-right font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <Accordion type="multiple" className="w-full">
+                        {summary.participants.map(p => (
+                          <AccordionItem value={p.id} key={p.id}>
+                            <AccordionTrigger>
+                               <div className="flex w-full justify-between items-center pr-4">
+                                <span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span>
+                                <span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span>
+                               </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="text-xs space-y-1 pr-4">
+                               <div className="flex justify-between">
+                                 <span className="text-muted-foreground">Subtotal Pesanan</span>
+                                 <span>{formatRupiah(p.subtotal)}</span>
+                               </div>
+                               <Separator className="my-1" />
+                               <div className="flex justify-between">
+                                 <span className="text-muted-foreground">Bagian PPN ({p.ppnPercentageShare.toFixed(2)}%)</span>
+                                 <span className="text-green-600">+{formatRupiah(p.ppnShare)}</span>
+                               </div>
+                               {p.serviceTaxShare > 0 &&
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    Bagian Service Tax {p.serviceTaxPercentageShare > 0 && `(${p.serviceTaxPercentageShare.toFixed(2)}%)`}
+                                  </span>
+                                  <span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span>
+                                </div>
+                               }
+                               <div className="flex justify-between">
+                                 <span className="text-muted-foreground">Bagian Ongkir</span>
+                                 <span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                 <span className="text-muted-foreground">Bagian Diskon</span>
+                                 <span className="text-destructive">-{formatRupiah(p.discountShare)}</span>
+                               </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
                   </CardContent>
-                </Card>
-            </motion.div>
+                </Card></motion.div>
           ) : (
              <Card className="text-center p-8 border-dashed flex flex-col items-center justify-center">
                 <FileText className="h-10 w-10 text-muted-foreground mb-4" />
@@ -427,72 +421,4 @@ export function BillSplitter() {
       </div>
     </div>
   );
-}
-
-function ParticipantCard({ participant, onRemoveParticipant, onAddExpense, onRemoveExpense, onEditExpense, formatRupiah }: {
-    participant: Participant,
-    onRemoveParticipant: (id: string) => void,
-    onAddExpense: (participantId: string, description: string, amount: number) => void,
-    onRemoveExpense: (participantId: string, expenseId: string) => void,
-    onEditExpense: (participantId: string, updatedExpense: Expense) => void,
-    formatRupiah: (amount: number) => string,
-}) {
-    const [desc, setDesc] = useState('');
-    const [amount, setAmount] = useState('');
-    
-    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        const numericValue = parseInt(rawValue.replace(/[^0-9]/g, ''), 10);
-        if (isNaN(numericValue)) {
-            setAmount('');
-        } else {
-            setAmount(new Intl.NumberFormat('id-ID').format(numericValue));
-        }
-    };
-
-    const handleAddExpense = () => {
-        const numericAmount = Number(amount.replace(/[^0-9]/g, '')) || 0;
-        onAddExpense(participant.id, desc, numericAmount);
-        setDesc('');
-        setAmount('');
-    };
-
-    const total = participant.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-    return (
-        <Card>
-            <CardHeader className="flex-row items-center justify-between p-4">
-                <CardTitle className="text-lg" dangerouslySetInnerHTML={{ __html: participant.name }}></CardTitle>
-                <div className="flex items-center gap-2">
-                    <span className="font-bold text-lg text-primary">{formatRupiah(total)}</span>
-                    <Button size="icon" variant="ghost" onClick={() => onRemoveParticipant(participant.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-2 p-4 pt-0">
-                <AnimatePresence>
-                  {participant.expenses.map(exp => (
-                    <motion.div key={exp.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20 }}>
-                        <div className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-muted/50">
-                            <span dangerouslySetInnerHTML={{ __html: exp.description }}></span>
-                            <div className="flex items-center gap-1">
-                                <span className="font-mono">{formatRupiah(exp.amount)}</span>
-                                <EditExpenseDialog expense={exp} onSave={(updated) => onEditExpense(participant.id, updated)}>
-                                    <Button size="icon" variant="ghost"><Pencil className="h-3 w-3"/></Button>
-                                </EditExpenseDialog>
-                                <Button size="icon" variant="ghost" onClick={() => onRemoveExpense(participant.id, exp.id)}><X className="h-4 w-4"/></Button>
-                            </div>
-                        </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-            </CardContent>
-            <CardFooter className="bg-muted/30 p-3">
-                 <div className="flex w-full gap-2">
-                    <Input placeholder="Nama item..." value={desc} onChange={(e) => setDesc(e.target.value)}/>
-                    <Input placeholder="Harga..." value={amount} onChange={handleAmountChange} onKeyDown={e => e.key === 'Enter' && handleAddExpense()}/>
-                    <Button className="px-4" onClick={handleAddExpense} aria-label="Tambah Item"><PlusCircle className="h-5 w-5"/></Button>
-                 </div>
-            </CardFooter>
-        </Card>
-    );
 }
