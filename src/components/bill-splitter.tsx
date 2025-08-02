@@ -64,7 +64,7 @@ import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, Discount
 import { calculateSplit } from '@/lib/calculator';
 import { SaveResultDialog } from './save-result-dialog'; 
 
-// Helper Components... (These remain unchanged, but are included for completeness)
+// Helper Components
 function TutorialDialog() {
   return (
     <Dialog>
@@ -87,7 +87,7 @@ function TutorialDialog() {
             </div>
              <div>
                 <h4 className="font-semibold mb-1">4. Atur Biaya & Opsi Tambahan</h4>
-                <p className="text-muted-foreground">Isi PPN, Service Tax, Ongkir, dan Diskon umum di kolom sebelah kanan. Anda juga bisa mengatur pembulatan dan memilih siapa yang membayar tagihan.</p>
+                <p className="text-muted-foreground">Isi PPN, Service Tax, Ongkir, dan Diskon umum. Anda juga bisa mengatur pembulatan dan memilih siapa yang membayar tagihan.</p>
             </div>
              <div>
                 <h4 className="font-semibold mb-1">5. Selesai!</h4>
@@ -319,13 +319,22 @@ export function BillSplitter() {
   return (
     <div className="space-y-4">
       <div className="grid lg:grid-cols-2 gap-4 items-start">
+        {/* Left Column for Inputs */}
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta Sesi Ini</CardTitle><TutorialDialog /></div>
+              <div className="flex justify-between items-center">
+                <CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta Sesi Ini</CardTitle>
+                <TutorialDialog />
+              </div>
               <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
-                <div className="flex-grow flex gap-2"><Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} /><Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button></div>
-                <div className="sm:mb-0 mb-2"><ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/></div>
+                <div className="flex-grow flex gap-2">
+                  <Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} />
+                  <Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button>
+                </div>
+                <div className="sm:mb-0 mb-2">
+                  <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
+                </div>
               </div>
             </CardHeader>
             {sessionParticipants.length > 0 && (
@@ -334,7 +343,8 @@ export function BillSplitter() {
                   {sessionParticipants.map(p => (
                     <motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
                        <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium">
-                          <span dangerouslySetInnerHTML={{ __html: p.name }} /><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button>
+                          <span dangerouslySetInnerHTML={{ __html: p.name }} />
+                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button>
                        </div>
                     </motion.div>
                   ))}
@@ -376,7 +386,9 @@ export function BillSplitter() {
             </CardFooter>
           </Card>
         </div>
-        <div className="space-y-4 sticky top-4">
+        
+        {/* Right Column for Costs and Results */}
+        <div className="space-y-4 lg:sticky top-4">
             <Card>
                 <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan & Total</CardTitle></CardHeader>
                 <CardContent className="space-y-4">

@@ -1,4 +1,4 @@
-import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, Transaction, DiscountDetails } from '@/types';
+import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, DiscountDetails, Transaction } from '@/types';
 
 export function calculateSplit(
   participants: SessionParticipant[],
@@ -13,7 +13,6 @@ export function calculateSplit(
   if (participants.length === 0) return null;
 
   const participantSubtotals: Map<string, number> = new Map(participants.map(p => [p.id, 0]));
-  let totalItemExpenses = 0;
   let totalItemDiscount = 0;
 
   items.forEach(item => {
@@ -35,7 +34,7 @@ export function calculateSplit(
     }
   });
 
-  totalItemExpenses = Array.from(participantSubtotals.values()).reduce((sum, val) => sum + val, 0);
+  const totalItemExpenses = Array.from(participantSubtotals.values()).reduce((sum, val) => sum + val, 0);
   
   let globalDiscountAmount = 0;
   if (globalDiscount.type === 'percentage') {
@@ -73,14 +72,29 @@ export function calculateSplit(
       totalToPay = Math.ceil(finalShare / rounding) * rounding;
     }
 
-    return { id: p.id, name: p.name, subtotal, ppnShare, serviceTaxShare, deliveryFeeShare, globalDiscountShare, finalShare, totalToPay };
+    const ppnPercentageShare = ppnAmount > 0 ? ppnShare / ppnAmount : 0;
+    const serviceTaxPercentageShare = serviceTaxAmount > 0 ? serviceTaxShare / serviceTaxAmount : 0;
+
+    return { 
+      id: p.id, 
+      name: p.name, 
+      subtotal, 
+      ppnShare, 
+      serviceTaxShare, 
+      deliveryFeeShare, 
+      globalDiscountShare, 
+      finalShare, 
+      totalToPay, 
+      ppnPercentageShare, 
+      serviceTaxPercentageShare 
+    };
   });
 
   const grandTotal = participantSummaries.reduce((sum, p) => sum + p.totalToPay, 0);
   const roundingDifference = grandTotal - totalBill;
 
   let transactions: Transaction[] = [];
-  if (payerId && participants.length > 1) {
+  if (payerId && participants.length > 1 && payerId !== 'none') {
       const payer = participants.find(p => p.id === payerId);
       if (payer) {
           transactions = participantSummaries

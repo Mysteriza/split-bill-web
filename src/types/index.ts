@@ -12,7 +12,6 @@ export interface DiscountDetails {
 
 // An item from the receipt
 export interface BillItem {
-  amount: number;
   id: string;
   description: string;
   quantity: number;
@@ -36,7 +35,6 @@ export interface Transaction {
 
 // The final calculated summary
 export interface Summary {
-  discount(discount: any): unknown;
   totalBill: number; // Precise total before rounding
   grandTotal: number; // Total after rounding
   roundingDifference: number; // The tip or deficit from rounding
@@ -46,9 +44,8 @@ export interface Summary {
   deliveryFee: number;
   totalDiscount: number; // Sum of all item and global discounts
   participants: Array<{
-    ppnPercentageShare: any;
     serviceTaxPercentageShare: number;
-    discountShare(discountShare: any): unknown;
+    ppnPercentageShare: number;
     id: string;
     name: string;
     subtotal: number; // Subtotal after item discounts
