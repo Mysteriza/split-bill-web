@@ -1,4 +1,4 @@
-import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, DiscountDetails, Transaction } from '@/types';
+import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, DiscountDetails } from '@/types';
 
 export function calculateSplit(
   participants: SessionParticipant[],
@@ -93,6 +93,7 @@ export function calculateSplit(
   const grandTotal = participantSummaries.reduce((sum, p) => sum + p.totalToPay, 0);
   const roundingDifference = grandTotal - totalBill;
 
+  type Transaction = { from: string; to: string; amount: number };
   let transactions: Transaction[] = [];
   if (payerId && participants.length > 1 && payerId !== 'none') {
       const payer = participants.find(p => p.id === payerId);
