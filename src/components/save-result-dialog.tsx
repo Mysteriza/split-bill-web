@@ -1,7 +1,5 @@
 "use client";
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import {
   Dialog,
   DialogContent,
@@ -14,12 +12,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import type { Summary, SessionParticipant, BillItem } from '@/types';
+import type { Summary, BillItem } from '@/types';
 
+// The interface is now simpler
 interface SaveResultDialogProps {
   children: React.ReactNode;
   summary: Summary;
-  participants: SessionParticipant[];
   items: BillItem[];
 }
 
@@ -28,32 +26,30 @@ const formatRupiah = (amount: number) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
 
-export function SaveResultDialog({ children, summary, items, participants }: SaveResultDialogProps) {
+export function SaveResultDialog({ children, summary, items }: SaveResultDialogProps) {
   const { toast } = useToast();
   
-  // Function to generate text for WhatsApp/Clipboard
   const generateTxtContent = () => {
     if (!summary) return '';
+    
     let content = `🧾 *Rincian Patungan - Kalkulator Receh* 🧾\n\n`;
     content += `====================================\n`;
-    content += `*Ringkasan Biaya Bersama:*\n\n`;
-    content += `Subtotal Pesanan: ${formatRupiah(summary.totalItemExpenses)}\n`;
-    content += `PPN & Service Tax: ${formatRupiah(summary.ppnAmount + summary.serviceTaxAmount)}\n`;
-    content += `Ongkir: ${formatRupiah(summary.deliveryFee)}\n`;
-    content += `Total Diskon: -${formatRupiah(summary.totalDiscount)}\n`;
-    content += `------------------------------------\n`;
-    content += `*Total Tagihan (Sebelum Pembulatan): ${formatRupiah(summary.totalBill)}*\n`;
-    if (summary.roundingDifference !== 0) {
-      content += `*Total Akhir (Setelah Pembulatan): ${formatRupiah(summary.grandTotal)}*\n`;
-    }
-    content += `\n`;
-    
-    content += `====================================\n`;
     content += `*👤 Rincian Bayar Per Orang:*\n\n`;
+
     summary.participants.forEach(p => {
       content += `• *${p.name}* » *${formatRupiah(p.totalToPay)}*\n`;
+      
+      const participantItems = items.filter(item => item.sharedBy.includes(p.id));
+      
+      if (participantItems.length > 0) {
+        participantItems.forEach(item => {
+          const effectiveQty = item.quantity / (item.sharedBy.length || 1);
+          const displayQty = effectiveQty % 1 === 0 ? effectiveQty : effectiveQty.toFixed(1);
+          content += `  - (${displayQty}x) ${item.description} @ ${formatRupiah(item.price)}\n`;
+        });
+      }
+      content += `\n`;
     });
-    content += `\n`;
 
     if (summary.transactions.length > 0) {
         content += `====================================\n`;
@@ -65,7 +61,16 @@ export function SaveResultDialog({ children, summary, items, participants }: Sav
     }
 
     content += `====================================\n`;
+    content += `*Ringkasan Biaya Bersama:*\n\n`;
+    content += `Subtotal Pesanan: ${formatRupiah(summary.totalItemExpenses)}\n`;
+    content += `PPN & Service Tax: ${formatRupiah(summary.ppnAmount + summary.serviceTaxAmount)}\n`;
+    content += `Ongkir: ${formatRupiah(summary.deliveryFee)}\n`;
+    content += `Total Diskon: -${formatRupiah(summary.totalDiscount)}\n`;
+    content += `------------------------------------\n`;
+    content += `*Total Tagihan: ${formatRupiah(summary.grandTotal)}*\n`;
+    content += `====================================\n\n`;
     content += `_Dihitung dengan Kalkulator Receh ✨_`;
+    
     return content;
   };
   
@@ -83,88 +88,21 @@ export function SaveResultDialog({ children, summary, items, participants }: Sav
     }
   };
 
-  // --- START: Rewritten PDF Generation Logic ---
-  const handleDownloadPdf = () => {
-    if (!summary) return;
-
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    // Title
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Hasil Perhitungan Patungan', pageWidth / 2, 20, { align: 'center' });
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Dibuat pada: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, 26, { align: 'center' });
-
-    // Table: Totals per Person
-    autoTable(doc, {
-      startY: 35,
-      head: [['Total Patungan per Orang', '']],
-      body: summary.participants.map(p => [p.name, formatRupiah(p.totalToPay)]),
-      theme: 'striped',
-      headStyles: { fillColor: [41, 128, 185], fontStyle: 'bold' },
-      bodyStyles: { cellPadding: 2 },
-      foot: [[{content: 'Grand Total (Dibulatkan)', styles: {fontStyle: 'bold'}}, {content: formatRupiah(summary.grandTotal), styles: {fontStyle: 'bold'}}]],
-      showFoot: 'lastPage',
-    });
-
-    let lastY = (doc as any).lastAutoTable.finalY;
-
-    // Table: Debt Details (if any)
-    if (summary.transactions.length > 0) {
-      autoTable(doc, {
-        startY: lastY + 10,
-        head: [['Rincian Pembayaran (Utang)', '']],
-        body: summary.transactions.map(t => [
-            `${t.from} bayar ke ${t.to}`,
-            formatRupiah(t.amount)
-        ]),
-        theme: 'striped',
-        headStyles: { fillColor: [22, 160, 133], fontStyle: 'bold' }
-      });
-      lastY = (doc as any).lastAutoTable.finalY;
-    }
-
-    // Table: Bill Summary
-    autoTable(doc, {
-      startY: lastY + 10,
-      head: [['Ringkasan Tagihan', '']],
-      body: [
-        ['Subtotal Item', formatRupiah(summary.totalItemExpenses)],
-        ['PPN & Service Tax', formatRupiah(summary.ppnAmount + summary.serviceTaxAmount)],
-        ['Ongkos Kirim', formatRupiah(summary.deliveryFee)],
-        ['Diskon Global', `-${formatRupiah(summary.totalDiscount)}`],
-        [{content: 'Total Tagihan Asli', styles: {fontStyle: 'bold'}}, {content: formatRupiah(summary.totalBill), styles: {fontStyle: 'bold'}}]
-      ],
-      theme: 'grid',
-      headStyles: { fillColor: [80, 80, 80] },
-    });
-
-    doc.save(`hasil-patungan-${new Date().toISOString().slice(0, 10)}.pdf`);
-    toast({ description: "PDF berhasil dibuat." });
-  };
-  // --- END: Rewritten PDF Generation Logic ---
-
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Simpan Hasil Perhitungan</DialogTitle>
+          <DialogTitle>Bagikan Hasil Perhitungan</DialogTitle>
           <DialogDescription>
-            Pilih format untuk menyimpan atau membagikan hasil perhitungan ini.
+            Salin teks di bawah ini untuk dibagikan ke teman-teman Anda melalui WhatsApp atau aplikasi lain.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="p-4 border rounded-md bg-muted/50 max-h-48 overflow-y-auto">
+          <div className="p-4 border rounded-md bg-muted/50 max-h-60 overflow-y-auto">
               <div className="text-xs whitespace-pre-wrap font-sans" dangerouslySetInnerHTML={generateHtmlPreview()} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Button onClick={handleCopyToClipboard}>Salin Teks untuk WhatsApp</Button>
-            <Button onClick={handleDownloadPdf} variant="secondary">Unduh sebagai PDF</Button>
-          </div>
+          <Button onClick={handleCopyToClipboard}>Salin Teks untuk WhatsApp</Button>
         </div>
         <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Tutup</Button></DialogClose>
