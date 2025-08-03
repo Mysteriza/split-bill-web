@@ -22,8 +22,8 @@ import {
   Percent,
   Pencil,
   ChevronsRight,
-  Upload, // Icon for Import
-  Save,   // Icon for Export
+  Upload,
+  Save,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +69,6 @@ import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, Discount
 import { calculateSplit } from '@/lib/calculator';
 import { SaveResultDialog } from './save-result-dialog';
 
-// Helper Components (No changes in these smaller components)
 function EditItemDialog({ item, onSave, children }: { item: BillItem; onSave: (itemId: string, newDesc: string, newQty: number, newPrice: number) => void; children: React.ReactNode;}) {
     const [description, setDescription] = useState(item.description);
     const [quantity, setQuantity] = useState(item.quantity.toString());
@@ -185,9 +184,7 @@ export function BillSplitter() {
           setContacts(updatedContacts);
           localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts));
       }
-      // --- START: Toast Notification on Add ---
       toast({ description: `"${sanitizedName}" berhasil ditambahkan sebagai peserta.` });
-      // --- END: Toast Notification on Add ---
     }
   };
   
@@ -230,7 +227,6 @@ export function BillSplitter() {
   const handleItemDiscount = (itemId: string, discount: DiscountDetails) => setItems(prev => prev.map(item => item.id === itemId ? {...item, discount} : item));
   const handleAmountChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => { const numericValue = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10); setter(isNaN(numericValue) ? '' : new Intl.NumberFormat('id-ID').format(numericValue)); };
 
-  // --- START: Import/Export Logic ---
   const handleExport = () => {
     const sessionState: SessionState = {
       sessionParticipants, items, ppn, serviceTaxType, serviceTaxValue,
@@ -256,9 +252,6 @@ export function BillSplitter() {
         const result = e.target?.result;
         if (typeof result !== 'string') throw new Error("File content is not a string");
         const sessionState: SessionState = JSON.parse(result);
-        
-        // Data validation could be added here
-        
         setSessionParticipants(sessionState.sessionParticipants);
         setItems(sessionState.items);
         setPpn(sessionState.ppn);
@@ -269,17 +262,14 @@ export function BillSplitter() {
         setGlobalDiscountValue(sessionState.globalDiscountValue);
         setRounding(sessionState.rounding);
         setPayerId(sessionState.payerId);
-
         toast({ description: "Sesi berhasil diimpor." });
       } catch (error) {
         toast({ variant: 'destructive', description: "Gagal mengimpor file. Pastikan file JSON valid." });
         console.error("Import error:", error);
       }
     };
-    // Reset file input to allow re-importing the same file
     if(importFileRef.current) importFileRef.current.value = "";
   };
-  // --- END: Import/Export Logic ---
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1975'];
 
@@ -298,11 +288,9 @@ export function BillSplitter() {
             </div>
             <div className="flex items-center gap-2">
               <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
-              {/* --- START: Import/Export Buttons --- */}
               <input type="file" ref={importFileRef} className="hidden" accept=".json" onChange={handleImport} />
               <Button variant="outline" size="sm" onClick={() => importFileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Impor</Button>
               <Button variant="outline" size="sm" onClick={handleExport}><Save className="mr-2 h-4 w-4" /> Ekspor</Button>
-              {/* --- END: Import/Export Buttons --- */}
             </div>
           </div>
         </CardHeader>
@@ -337,11 +325,11 @@ export function BillSplitter() {
             <div className="space-y-4"><Card><CardHeader><CardTitle className="flex items-center gap-3"><Sparkles className="h-6 w-6"/> Penyederhanaan</CardTitle></CardHeader><CardContent className="grid sm:grid-cols-2 gap-4"><div className="space-y-2"><Label>Pembulatan</Label><Select onValueChange={(val) => setRounding(parseInt(val))} defaultValue="0"><SelectTrigger><SelectValue placeholder="Pilih Pembulatan" /></SelectTrigger><SelectContent><SelectItem value="0">Tidak ada</SelectItem><SelectItem value="100">Ke atas (Rp 100)</SelectItem><SelectItem value="500">Ke atas (Rp 500)</SelectItem><SelectItem value="1000">Ke atas (Rp 1.000)</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label>Siapa yang Bayar?</Label><Select onValueChange={(id) => setPayerId(id === 'none' ? undefined : id)} value={payerId}><SelectTrigger><SelectValue placeholder="Pilih Pembayar" /></SelectTrigger><SelectContent><SelectItem value="none">Belum Ditentukan</SelectItem>{sessionParticipants.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>{summary.roundingDifference !== 0 && (<p className="sm:col-span-2 text-sm text-muted-foreground">{summary.roundingDifference > 0 ? 'Total kelebihan (tip): ' : 'Total kekurangan: '}<span className="font-bold text-primary">{formatRupiah(Math.abs(summary.roundingDifference))}</span></p>)}</CardContent></Card>{summary.transactions.length > 0 && (<Card><CardHeader><CardTitle className="flex items-center gap-3"><Wallet className="h-6 w-6"/> Rincian Utang</CardTitle></CardHeader><CardContent>{summary.transactions.map(t => (<p key={t.from} className="text-sm"><span className="font-bold" dangerouslySetInnerHTML={{__html: t.from}}></span> harus bayar <span className="font-bold text-primary">{formatRupiah(t.amount)}</span> ke <span className="font-bold" dangerouslySetInnerHTML={{__html: t.to}}></span></p>))}</CardContent></Card>)}</div>
             <div className="space-y-4">
                  <Card><CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Total Keseluruhan</CardTitle></CardHeader><CardContent className='space-y-2 text-sm'><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Item</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">PPN ({ppnValue}%)</span><span>{formatRupiah(summary.ppnAmount)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Service Tax</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span>{formatRupiah(summary.deliveryFee)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Diskon Global</span><span className='text-destructive'>-{formatRupiah(globalDiscountDetails.type === 'percentage' ? summary.totalItemExpenses * (globalDiscountDetails.value/100) : globalDiscountDetails.value)}</span></div><Separator /><div className="flex justify-between items-center font-bold"><span className="text-base">Total Tagihan</span><span className="text-xl">{formatRupiah(summary.totalBill)}</span></div>{summary.roundingDifference !== 0 && (<div className="flex justify-between items-center font-bold text-primary"><span className="text-base">Grand Total</span><span className="text-xl">{formatRupiah(summary.grandTotal)}</span></div>)}</CardContent></Card>
-                <Card className="shadow-lg"><CardHeader className="flex flex-row justify-between items-center"><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle><SaveResultDialog summary={summary} items={items} participants={sessionParticipants}><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan PDF</Button></SaveResultDialog></CardHeader><CardContent><Accordion type="multiple" className="w-full">{summary.participants.map(p => (<AccordionItem value={p.id} key={p.id}><AccordionTrigger><div className="flex w-full justify-between items-center pr-4"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span><span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span></div></AccordionTrigger><AccordionContent className="text-xs space-y-1 pr-4"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Pesanan</span><span>{formatRupiah(p.subtotal)}</span></div><Separator className="my-1" />
-                {/* --- START: Modified Tax Display --- */}
+                <Card className="shadow-lg"><CardHeader className="flex flex-row justify-between items-center"><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle>
+                <SaveResultDialog summary={summary} items={items} participants={sessionParticipants}><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan Hasil</Button></SaveResultDialog>
+                </CardHeader><CardContent><Accordion type="multiple" className="w-full">{summary.participants.map(p => (<AccordionItem value={p.id} key={p.id}><AccordionTrigger><div className="flex w-full justify-between items-center pr-4"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span><span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span></div></AccordionTrigger><AccordionContent className="text-xs space-y-1 pr-4"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Pesanan</span><span>{formatRupiah(p.subtotal)}</span></div><Separator className="my-1" />
                 <div className="flex justify-between"><span className="text-muted-foreground">Bagian PPN ({ppnValue}%)</span><span className="text-green-600">+{formatRupiah(p.ppnShare)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Bagian Service Tax {serviceTaxDetails.type === 'percentage' ? `(${serviceTaxDetails.value}%)` : ''}</span><span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span></div>
-                {/* --- END: Modified Tax Display --- */}
                 <div className="flex justify-between"><span className="text-muted-foreground">Bagian Ongkir</span><span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Diskon</span><span className="text-destructive">-{formatRupiah(p.globalDiscountShare + items.filter(i => i.sharedBy.includes(p.id)).reduce((acc, i) => acc + (i.discount.type === 'amount' ? i.discount.value / (i.sharedBy.length || 1) : (i.price * i.quantity * i.discount.value / 100) / (i.sharedBy.length || 1)), 0))}</span></div></AccordionContent></AccordionItem>))}</Accordion></CardContent></Card>
             </div>
         </div>

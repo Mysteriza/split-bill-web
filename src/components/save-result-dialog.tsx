@@ -1,152 +1,173 @@
 "use client";
 
-import React, { useRef } from 'react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
-import DOMPurify from 'dompurify';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
   DialogFooter,
   DialogClose,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import type { Summary, BillItem, SessionParticipant } from '@/types';
+import { useToast } from '@/hooks/use-toast';
+import type { Summary, SessionParticipant, BillItem } from '@/types';
+
+interface SaveResultDialogProps {
+  children: React.ReactNode;
+  summary: Summary;
+  participants: SessionParticipant[];
+  items: BillItem[];
+}
 
 // Helper to format currency
-const formatRupiah = (amount: number) => new Intl.NumberFormat('id-ID', {
-  style: 'currency',
-  currency: 'IDR',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-}).format(Math.round(amount));
+const formatRupiah = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
+};
 
-export function SaveResultDialog({
-  summary,
-  items,
-  participants,
-  children
-}: {
-  summary: Summary | null;
-  items: BillItem[];
-  participants: SessionParticipant[];
-  children: React.ReactNode;
-}) {
-  const printRef = useRef<HTMLDivElement>(null);
-
-  const handleDownload = async () => {
-    const element = printRef.current;
-    if (!element || !summary) return;
-
-    const canvas = await html2canvas(element, { scale: 2 });
-    const data = canvas.toDataURL('image/png');
-
-    const pdf = new jsPDF({
-      orientation: 'p',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = imgWidth / imgHeight;
-    const newWidth = pdfWidth - 20; // with margin
-    const newHeight = newWidth / ratio;
-
-    let heightLeft = newHeight;
-    let position = 10; // top margin
-
-    pdf.addImage(data, 'PNG', 10, position, newWidth, newHeight);
-    heightLeft -= (pdfHeight - 20); // minus margin
-
-    while (heightLeft > 0) {
-      position = heightLeft - newHeight;
-      pdf.addPage();
-      pdf.addImage(data, 'PNG', 10, position, newWidth, newHeight);
-      heightLeft -= (pdfHeight - 20);
+export function SaveResultDialog({ children, summary, items, participants }: SaveResultDialogProps) {
+  const { toast } = useToast();
+  
+  // Function to generate text for WhatsApp/Clipboard
+  const generateTxtContent = () => {
+    if (!summary) return '';
+    let content = `🧾 *Rincian Patungan - Kalkulator Receh* 🧾\n\n`;
+    content += `====================================\n`;
+    content += `*Ringkasan Biaya Bersama:*\n\n`;
+    content += `Subtotal Pesanan: ${formatRupiah(summary.totalItemExpenses)}\n`;
+    content += `PPN & Service Tax: ${formatRupiah(summary.ppnAmount + summary.serviceTaxAmount)}\n`;
+    content += `Ongkir: ${formatRupiah(summary.deliveryFee)}\n`;
+    content += `Total Diskon: -${formatRupiah(summary.totalDiscount)}\n`;
+    content += `------------------------------------\n`;
+    content += `*Total Tagihan (Sebelum Pembulatan): ${formatRupiah(summary.totalBill)}*\n`;
+    if (summary.roundingDifference !== 0) {
+      content += `*Total Akhir (Setelah Pembulatan): ${formatRupiah(summary.grandTotal)}*\n`;
     }
+    content += `\n`;
     
-    pdf.save(`hasil-patungan-${new Date().toISOString().slice(0, 10)}.pdf`);
+    content += `====================================\n`;
+    content += `*👤 Rincian Bayar Per Orang:*\n\n`;
+    summary.participants.forEach(p => {
+      content += `• *${p.name}* » *${formatRupiah(p.totalToPay)}*\n`;
+    });
+    content += `\n`;
+
+    if (summary.transactions.length > 0) {
+        content += `====================================\n`;
+        content += `*💳 Rincian Utang (Sudah Disederhanakan):*\n\n`;
+        summary.transactions.forEach(t => {
+            content += `  - *${t.from}* harus bayar *${formatRupiah(t.amount)}* ke *${t.to}*\n`;
+        });
+        content += `\n`;
+    }
+
+    content += `====================================\n`;
+    content += `_Dihitung dengan Kalkulator Receh ✨_`;
+    return content;
+  };
+  
+  const generateHtmlPreview = () => {
+    const textContent = generateTxtContent();
+    return { __html: textContent.replace(/\n/g, '<br />').replace(/\*(.*?)\*/g, '<strong>$1</strong>').replace(/_(.*?)_/g, '<em>$1</em>') };
   };
 
-  if (!summary) return <>{children}</>;
+  const handleCopyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generateTxtContent());
+      toast({ title: 'Berhasil!', description: 'Rincian berhasil disalin ke clipboard.' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Gagal', description: 'Tidak dapat menyalin ke clipboard.' });
+    }
+  };
+
+  // --- START: Rewritten PDF Generation Logic ---
+  const handleDownloadPdf = () => {
+    if (!summary) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Title
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Hasil Perhitungan Patungan', pageWidth / 2, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Dibuat pada: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, 26, { align: 'center' });
+
+    // Table: Totals per Person
+    autoTable(doc, {
+      startY: 35,
+      head: [['Total Patungan per Orang', '']],
+      body: summary.participants.map(p => [p.name, formatRupiah(p.totalToPay)]),
+      theme: 'striped',
+      headStyles: { fillColor: [41, 128, 185], fontStyle: 'bold' },
+      bodyStyles: { cellPadding: 2 },
+      foot: [[{content: 'Grand Total (Dibulatkan)', styles: {fontStyle: 'bold'}}, {content: formatRupiah(summary.grandTotal), styles: {fontStyle: 'bold'}}]],
+      showFoot: 'lastPage',
+    });
+
+    let lastY = (doc as any).lastAutoTable.finalY;
+
+    // Table: Debt Details (if any)
+    if (summary.transactions.length > 0) {
+      autoTable(doc, {
+        startY: lastY + 10,
+        head: [['Rincian Pembayaran (Utang)', '']],
+        body: summary.transactions.map(t => [
+            `${t.from} bayar ke ${t.to}`,
+            formatRupiah(t.amount)
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [22, 160, 133], fontStyle: 'bold' }
+      });
+      lastY = (doc as any).lastAutoTable.finalY;
+    }
+
+    // Table: Bill Summary
+    autoTable(doc, {
+      startY: lastY + 10,
+      head: [['Ringkasan Tagihan', '']],
+      body: [
+        ['Subtotal Item', formatRupiah(summary.totalItemExpenses)],
+        ['PPN & Service Tax', formatRupiah(summary.ppnAmount + summary.serviceTaxAmount)],
+        ['Ongkos Kirim', formatRupiah(summary.deliveryFee)],
+        ['Diskon Global', `-${formatRupiah(summary.totalDiscount)}`],
+        [{content: 'Total Tagihan Asli', styles: {fontStyle: 'bold'}}, {content: formatRupiah(summary.totalBill), styles: {fontStyle: 'bold'}}]
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [80, 80, 80] },
+    });
+
+    doc.save(`hasil-patungan-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast({ description: "PDF berhasil dibuat." });
+  };
+  // --- END: Rewritten PDF Generation Logic ---
 
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Simpan Hasil Perhitungan</DialogTitle>
           <DialogDescription>
-            Anda dapat menyimpan hasil ini sebagai file PDF. Periksa pratinjau di bawah ini.
+            Pilih format untuk menyimpan atau membagikan hasil perhitungan ini.
           </DialogDescription>
         </DialogHeader>
-        
-        {/* Printable Area */}
-        <div ref={printRef} className="p-6 bg-white text-black max-h-[60vh] overflow-y-auto">
-          <header className="text-center mb-6">
-            <h1 className="text-2xl font-bold mb-1">Hasil Perhitungan Patungan</h1>
-            <p className="text-sm text-gray-500">Dibuat pada: {new Date().toLocaleString('id-ID')}</p>
-          </header>
-
-          <main>
-            <section className="mb-6">
-              <h2 className="text-lg font-semibold border-b pb-2 mb-2">Total Patungan per Orang</h2>
-              <table className="w-full text-sm">
-                <tbody>
-                  {summary.participants.map(p => (
-                    <tr key={p.id} className="border-b">
-                      <td className="py-2" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(p.name) }}></td>
-                      <td className="py-2 text-right font-bold">{formatRupiah(p.totalToPay)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-            
-            {summary.transactions.length > 0 && (
-              <section className="mb-6">
-                <h2 className="text-lg font-semibold border-b pb-2 mb-2">Rincian Pembayaran</h2>
-                <div className="space-y-1 text-sm">
-                  {summary.transactions.map((t, index) => (
-                    <p key={index}>
-                      <span className="font-semibold" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(t.from) }}></span>
-                      {' harus bayar '}
-                      <span className="font-semibold">{formatRupiah(t.amount)}</span>
-                      {' ke '}
-                      <span className="font-semibold" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(t.to) }}></span>.
-                    </p>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section className="mb-6">
-              <h2 className="text-lg font-semibold border-b pb-2 mb-2">Ringkasan Tagihan</h2>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between"><span className="text-gray-600">Subtotal Item</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Pajak & Service</span><span>{formatRupiah(summary.ppnAmount + summary.serviceTaxAmount)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Ongkos Kirim</span><span>{formatRupiah(summary.deliveryFee)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Diskon Global</span><span className="text-red-600">-{formatRupiah(summary.totalDiscount)}</span></div>
-                <hr className="my-2"/>
-                <div className="flex justify-between font-bold text-base"><span >Total Tagihan Asli</span><span>{formatRupiah(summary.totalBill)}</span></div>
-                {summary.roundingDifference !== 0 && (
-                   <div className="flex justify-between font-bold text-base"><span >Grand Total (Dibulatkan)</span><span>{formatRupiah(summary.grandTotal)}</span></div>
-                )}
-              </div>
-            </section>
-          </main>
+        <div className="grid gap-4 py-4">
+          <div className="p-4 border rounded-md bg-muted/50 max-h-48 overflow-y-auto">
+              <div className="text-xs whitespace-pre-wrap font-sans" dangerouslySetInnerHTML={generateHtmlPreview()} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Button onClick={handleCopyToClipboard}>Salin Teks untuk WhatsApp</Button>
+            <Button onClick={handleDownloadPdf} variant="secondary">Unduh sebagai PDF</Button>
+          </div>
         </div>
-        
         <DialogFooter>
-          <DialogClose asChild><Button type="button" variant="secondary">Tutup</Button></DialogClose>
-          <Button onClick={handleDownload}>Unduh PDF</Button>
+            <DialogClose asChild><Button type="button" variant="outline">Tutup</Button></DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
