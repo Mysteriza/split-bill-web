@@ -20,6 +20,7 @@ import {
   Sparkles,
   Wallet,
   Percent,
+  Pencil, // Added for the edit icon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,9 +63,9 @@ import {
 } from "@/components/ui/tooltip";
 import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, DiscountDetails } from '@/types';
 import { calculateSplit } from '@/lib/calculator';
-import { SaveResultDialog } from './save-result-dialog'; 
+import { SaveResultDialog } from './save-result-dialog';
 
-// Helper Components
+// Helper Components (No changes below this line)
 function TutorialDialog() {
   return (
     <Dialog>
@@ -72,27 +73,27 @@ function TutorialDialog() {
       <DialogContent>
         <DialogHeader><DialogTitle className="flex items-center gap-2"><HelpCircle/> Cara Menggunakan Kalkulator Receh</DialogTitle></DialogHeader>
         <div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4">
-            <p>Selamat datang! Berikut alur kerja baru yang lebih cepat:</p>
-            <div>
-                <h4 className="font-semibold mb-1">1. Tambahkan Semua Peserta</h4>
-                <p className="text-muted-foreground">Masukkan semua nama teman yang ikut patungan di bagian atas. Anda juga bisa menambahkan dari "Buku Kontak".</p>
-            </div>
-             <div>
-                <h4 className="font-semibold mb-1">2. Catat Semua Item dari Struk</h4>
-                <p className="text-muted-foreground">Di bagian "Daftar Pesanan", masukkan semua item, kuantitas, dan harganya, lalu tekan `+`.</p>
-            </div>
-            <div>
-                <h4 className="font-semibold mb-1">3. Tandai Pemilik & Diskon Item</h4>
-                <p className="text-muted-foreground">Di samping setiap item, klik tombol <span className="font-semibold text-primary inline-flex items-center"><UserPlus className="h-4 w-4" /></span> untuk menandai siapa saja yang memesan. Klik tombol <span className="font-semibold text-primary inline-flex items-center"><Percent className="h-4 w-4" /></span> jika ada diskon khusus untuk item tersebut.</p>
-            </div>
-             <div>
-                <h4 className="font-semibold mb-1">4. Atur Biaya & Opsi Tambahan</h4>
-                <p className="text-muted-foreground">Isi PPN, Service Tax, Ongkir, dan Diskon umum. Anda juga bisa mengatur pembulatan dan memilih siapa yang membayar tagihan.</p>
-            </div>
-             <div>
-                <h4 className="font-semibold mb-1">5. Selesai!</h4>
-                <p className="text-muted-foreground">Semua perhitungan terjadi secara real-time. Anda bisa langsung melihat rincian utang, visualisasi, dan hasil akhirnya untuk disimpan.</p>
-            </div>
+          <p>Selamat datang! Berikut alur kerja baru yang lebih cepat:</p>
+          <div>
+            <h4 className="font-semibold mb-1">1. Tambahkan Semua Peserta</h4>
+            <p className="text-muted-foreground">Masukkan semua nama teman yang ikut patungan di bagian atas. Anda juga bisa menambahkan dari "Buku Kontak".</p>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-1">2. Catat Semua Item dari Struk</h4>
+            <p className="text-muted-foreground">Di bagian "Daftar Pesanan", masukkan semua item, kuantitas, dan harganya, lalu tekan `+`.</p>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-1">3. Tandai Pemilik & Diskon Item</h4>
+            <p className="text-muted-foreground">Di samping setiap item, klik tombol <span className="font-semibold text-primary inline-flex items-center"><UserPlus className="h-4 w-4" /></span> untuk menandai siapa saja yang memesan. Klik tombol <span className="font-semibold text-primary inline-flex items-center"><Percent className="h-4 w-4" /></span> jika ada diskon khusus untuk item tersebut.</p>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-1">4. Atur Biaya & Opsi Tambahan</h4>
+            <p className="text-muted-foreground">Isi PPN, Service Tax, Ongkir, dan Diskon umum. Anda juga bisa mengatur pembulatan dan memilih siapa yang membayar tagihan.</p>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-1">5. Selesai!</h4>
+            <p className="text-muted-foreground">Semua perhitungan terjadi secara real-time. Anda bisa langsung melihat rincian utang, visualisasi, dan hasil akhirnya untuk disimpan.</p>
+          </div>
         </div>
         <DialogFooter><DialogClose asChild><Button>Mengerti!</Button></DialogClose></DialogFooter>
       </DialogContent>
@@ -236,9 +237,14 @@ export function BillSplitter() {
   const [sessionParticipants, setSessionParticipants] = useState<SessionParticipant[]>([]);
   const [items, setItems] = useState<BillItem[]>([]);
   const [newParticipantName, setNewParticipantName] = useState('');
+
+  // --- START OF CHANGES ---
   const [newItemDesc, setNewItemDesc] = useState('');
   const [newItemQty, setNewItemQty] = useState('1');
   const [newItemPrice, setNewItemPrice] = useState('');
+  const [editingItem, setEditingItem] = useState<BillItem | null>(null); // State to hold the item being edited
+  // --- END OF CHANGES ---
+
   const [ppn, setPpn] = useState('');
   const [serviceTaxType, setServiceTaxType] = useState<'amount' | 'percentage'>('percentage');
   const [serviceTaxValue, setServiceTaxValue] = useState('');
@@ -293,18 +299,54 @@ export function BillSplitter() {
     setItems(prev => prev.map(item => ({ ...item, sharedBy: item.sharedBy.filter(pId => pId !== id) })));
   };
   
-  const handleAddItem = () => {
+  // --- START OF CHANGES ---
+  // This function now handles both adding a new item and updating an existing one.
+  const handleItemSubmit = () => {
     const sanitizedDesc = DOMPurify.sanitize(newItemDesc.trim());
     const numericPrice = parseFormattedNumber(newItemPrice);
     const quantity = parseInt(newItemQty) || 1;
-    if (sanitizedDesc && numericPrice > 0) {
-      setItems(prev => [...prev, {id: crypto.randomUUID(), description: sanitizedDesc, price: numericPrice, quantity, discount: { type: 'amount', value: 0 }, sharedBy: []}]);
-      setNewItemDesc('');
-      setNewItemPrice('');
-      setNewItemQty('1');
-      newItemDescRef.current?.focus();
+
+    if (!sanitizedDesc || numericPrice <= 0) {
+      toast({ variant: 'destructive', description: "Nama dan harga item harus diisi dengan benar." });
+      return;
     }
+
+    if (editingItem) {
+      // Update existing item
+      setItems(prev => prev.map(item =>
+        item.id === editingItem.id
+          ? { ...item, description: sanitizedDesc, price: numericPrice, quantity: quantity }
+          : item
+      ));
+      toast({ description: `Item "${sanitizedDesc}" berhasil diperbarui.` });
+    } else {
+      // Add new item
+      setItems(prev => [...prev, {id: crypto.randomUUID(), description: sanitizedDesc, price: numericPrice, quantity, discount: { type: 'amount', value: 0 }, sharedBy: []}]);
+    }
+    
+    // Reset form and editing state
+    setNewItemDesc('');
+    setNewItemPrice('');
+    setNewItemQty('1');
+    setEditingItem(null);
+    newItemDescRef.current?.focus();
   };
+
+  const handleStartEdit = (itemToEdit: BillItem) => {
+    setEditingItem(itemToEdit);
+    setNewItemDesc(itemToEdit.description);
+    setNewItemPrice(new Intl.NumberFormat('id-ID').format(itemToEdit.price)); // Format for display
+    setNewItemQty(itemToEdit.quantity.toString());
+    newItemDescRef.current?.focus();
+  };
+  
+  const handleCancelEdit = () => {
+    setEditingItem(null);
+    setNewItemDesc('');
+    setNewItemPrice('');
+    setNewItemQty('1');
+  };
+  // --- END OF CHANGES ---
   
   const removeItem = (id: string) => setItems(prev => prev.filter(item => item.id !== id));
   const handleTagParticipant = (itemId: string, participantIds: string[]) => setItems(prev => prev.map(item => item.id === itemId ? {...item, sharedBy: participantIds} : item));
@@ -339,10 +381,10 @@ export function BillSplitter() {
             <AnimatePresence>
               {sessionParticipants.map(p => (
                 <motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
-                   <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium">
-                      <span dangerouslySetInnerHTML={{ __html: p.name }} />
-                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button>
-                   </div>
+                  <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium">
+                    <span dangerouslySetInnerHTML={{ __html: p.name }} />
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -352,37 +394,56 @@ export function BillSplitter() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-3"><Receipt className="h-6 w-6" /> Daftar Pesanan</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-            <AnimatePresence>
-              {items.map(item => (
-                <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}>
-                    <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                        <div>
-                            <p className="font-medium text-sm" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p>
-                            <p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                           <ParticipantTagList item={item} sessionParticipants={sessionParticipants} />
-                           <ItemDiscountDialog item={item} onSave={handleItemDiscount}>
-                               <Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button>
-                           </ItemDiscountDialog>
-                           <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog>
-                           <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                    </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-        </CardContent>
-        <CardFooter className="bg-muted/30 p-3">
-             <div className="flex flex-col sm:flex-row w-full gap-2 items-center">
-                <Input ref={newItemDescRef} placeholder="Nama item..." value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} className="flex-grow" />
-                <div className="flex w-full sm:w-auto gap-2">
-                    <Input placeholder="Qty" type="number" value={newItemQty} onChange={(e) => setNewItemQty(e.target.value)} className="w-16 flex-shrink-0" />
-                    <Input placeholder="Harga..." value={newItemPrice} onChange={handleAmountChange(setNewItemPrice)} onKeyDown={(e) => {if (e.key === 'Enter') handleAddItem();}} className="flex-grow" />
-                    <Button className="px-4" onClick={handleAddItem}><PlusCircle className="h-5 w-5" /></Button>
+          <AnimatePresence>
+            {items.map(item => (
+              <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}>
+                <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                  <div>
+                    <p className="font-medium text-sm" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p>
+                    <p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <ParticipantTagList item={item} sessionParticipants={sessionParticipants} />
+                    <ItemDiscountDialog item={item} onSave={handleItemDiscount}>
+                      <Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button>
+                    </ItemDiscountDialog>
+                    <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog>
+                    {/* --- START OF CHANGES: Added Edit button --- */}
+                    <Button variant="ghost" size="icon" onClick={() => handleStartEdit(item)} className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button>
+                    {/* --- END OF CHANGES --- */}
+                    <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
                 </div>
-             </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </CardContent>
+        {/* --- START OF CHANGES: Modified item form for editing --- */}
+        <CardFooter className="bg-muted/30 p-3">
+            <div className="flex flex-col w-full gap-2">
+                {editingItem && (
+                    <div className="text-sm font-medium text-blue-600 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                        Mengedit item: <span className="font-bold" dangerouslySetInnerHTML={{ __html: editingItem.description }}></span>
+                    </div>
+                )}
+                <div className="flex flex-col sm:flex-row w-full gap-2 items-center">
+                    <Input ref={newItemDescRef} placeholder="Nama item..." value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} className="flex-grow" />
+                    <div className="flex w-full sm:w-auto gap-2">
+                        <Input placeholder="Qty" type="number" value={newItemQty} onChange={(e) => setNewItemQty(e.target.value)} className="w-16 flex-shrink-0" />
+                        <Input placeholder="Harga..." value={newItemPrice} onChange={handleAmountChange(setNewItemPrice)} onKeyDown={(e) => {if (e.key === 'Enter') handleItemSubmit();}} className="flex-grow" />
+                        <Button className="px-4" onClick={handleItemSubmit}>
+                            {editingItem ? 'Update' : <PlusCircle className="h-5 w-5" />}
+                        </Button>
+                        {editingItem && (
+                            <Button variant="outline" onClick={handleCancelEdit}>
+                                <X className="h-5 w-5" />
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </div>
         </CardFooter>
+        {/* --- END OF CHANGES --- */}
       </Card>
       <Card>
           <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan</CardTitle></CardHeader>
@@ -433,7 +494,7 @@ export function BillSplitter() {
                         </div>
                         <div className="space-y-2">
                             <Label>Siapa yang Bayar?</Label>
-                            <Select onValueChange={(id) => setPayerId(id)} value={payerId}>
+                            <Select onValueChange={(id) => setPayerId(id === 'none' ? undefined : id)} value={payerId}>
                                 <SelectTrigger><SelectValue placeholder="Pilih Pembayar" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">Belum Ditentukan</SelectItem>
@@ -504,33 +565,33 @@ export function BillSplitter() {
                           {summary.participants.map(p => (
                             <AccordionItem value={p.id} key={p.id}>
                               <AccordionTrigger>
-                                 <div className="flex w-full justify-between items-center pr-4">
-                                  <span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span>
-                                  <span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span>
-                                 </div>
+                               <div className="flex w-full justify-between items-center pr-4">
+                                <span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span>
+                                <span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span>
+                               </div>
                               </AccordionTrigger>
                               <AccordionContent className="text-xs space-y-1 pr-4">
-                                 <div className="flex justify-between">
-                                   <span className="text-muted-foreground">Subtotal Pesanan</span>
-                                   <span>{formatRupiah(p.subtotal)}</span>
-                                 </div>
-                                 <Separator className="my-1" />
-                                 <div className="flex justify-between">
-                                   <span className="text-muted-foreground">Bagian PPN</span>
-                                   <span className="text-green-600">+{formatRupiah(p.ppnShare)}</span>
-                                 </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-muted-foreground">Bagian Service Tax</span>
-                                   <span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span>
-                                 </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-muted-foreground">Bagian Ongkir</span>
-                                   <span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span>
-                                 </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-muted-foreground">Bagian Diskon</span>
-                                   <span className="text-destructive">-{formatRupiah(p.globalDiscountShare + items.filter(i => i.sharedBy.includes(p.id)).reduce((acc, i) => acc + (i.discount.type === 'amount' ? i.discount.value / i.sharedBy.length : (i.price * i.quantity * i.discount.value / 100) / i.sharedBy.length), 0))}</span>
-                                 </div>
+                               <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Subtotal Pesanan</span>
+                                  <span>{formatRupiah(p.subtotal)}</span>
+                               </div>
+                               <Separator className="my-1" />
+                               <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Bagian PPN</span>
+                                  <span className="text-green-600">+{formatRupiah(p.ppnShare)}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Bagian Service Tax</span>
+                                  <span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Bagian Ongkir</span>
+                                  <span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Bagian Diskon</span>
+                                  <span className="text-destructive">-{formatRupiah(p.globalDiscountShare + items.filter(i => i.sharedBy.includes(p.id)).reduce((acc, i) => acc + (i.discount.type === 'amount' ? i.discount.value / i.sharedBy.length : (i.price * i.quantity * i.discount.value / 100) / i.sharedBy.length), 0))}</span>
+                               </div>
                               </AccordionContent>
                             </AccordionItem>
                           ))}
