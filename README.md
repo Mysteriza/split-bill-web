@@ -1,32 +1,32 @@
 # 🧾 Kalkulator Receh
 
-Selamat datang di **Kalkulator Receh**, sebuah aplikasi web modern yang dirancang untuk mempermudah proses pembagian tagihan (split bill) bersama teman-teman. Dibangun dengan Next.js dan TypeScript, aplikasi ini menawarkan pengalaman pengguna yang cepat, interaktif, dan intuitif.
+Selamat datang di **Kalkulator Receh**, sebuah aplikasi web modern yang dirancang untuk mempermudah proses pembagian tagihan (*split bill*) bersama teman-teman. Dibangun dengan Next.js dan TypeScript, aplikasi ini menawarkan pengalaman pengguna yang cepat, akurat, dan sangat efisien.
 
 Lihat demonya secara langsung di: **[https://retro-split-bill-web.vercel.app/](https://retro-split-bill-web.vercel.app/)**
 
-<img width="1919" height="926" alt="image" src="https://github.com/user-attachments/assets/464b71bb-99f0-4941-9fd7-a98f68b38564" />
+<img width="1920" height="1177" alt="Tampilan Aplikasi Kalkulator Receh" src="https://github.com/user-attachments/assets/58b41d6f-26d5-44d9-b210-7e664465e601" />
 
 ## ✨ Fitur Utama
 
-Aplikasi ini dilengkapi dengan berbagai fitur canggih untuk memastikan proses patungan menjadi mudah dan menyenangkan:
+Aplikasi ini dilengkapi dengan berbagai fitur canggih untuk memastikan proses patungan menjadi secepat dan semudah mungkin:
 
-* **Perhitungan Real-time**: Tidak perlu menekan tombol "hitung". Semua total tagihan dan bagian per orang akan diperbarui secara otomatis setiap kali Anda mengubah data.
-* **Perhitungan Pajak Detail**: Input terpisah untuk **PPN (%)** dan **Service Tax (%)** untuk hasil yang lebih akurat sesuai struk restoran.
-* **Manajemen Kontak**: Simpan daftar teman yang sering ikut patungan dalam "Buku Kontak". Tambahkan mereka ke sesi perhitungan dengan satu klik.
-* **Input Item yang Fleksibel**: Tambah, **edit**, dan hapus item pesanan untuk setiap peserta dengan mudah.
-* **Tutorial Interaktif**: Panduan penggunaan yang jelas dan mudah diakses langsung dari dalam aplikasi, cocok untuk pengguna baru.
-* **Animasi Halus**: Antarmuka dilengkapi dengan animasi yang mulus saat menambah atau menghapus peserta dan item, memberikan umpan balik visual yang memuaskan.
-* **Ekspor Hasil**: Simpan hasil perhitungan dalam format **PDF** yang rapi atau salin ringkasan teks yang sudah diformat khusus untuk dibagikan di aplikasi chat seperti **WhatsApp**.
-* **Keamanan Input**: Dilengkapi dengan pembersihan input untuk mencegah *Cross-Site Scripting (XSS)*, memastikan data yang dimasukkan aman.
-* **Desain Responsif**: Tampilan yang optimal baik di perangkat desktop maupun mobile.
+* **Perhitungan Real-time**: Semua total tagihan dan bagian per orang diperbarui secara otomatis setiap kali Anda mengubah data, tanpa perlu menekan tombol "hitung".
+* **Input Massal Super Cepat**: Salin-tempel (*copy-paste*) beberapa baris pesanan langsung dari struk atau catatan Anda sekaligus. Ini adalah cara tercepat untuk memasukkan data.
+* **Manajemen Sesi (Impor/Ekspor)**: Simpan seluruh sesi perhitungan (peserta, item, biaya) ke dalam sebuah file **JSON**. Muat kembali sesi tersebut kapan pun Anda butuhkan, cocok untuk acara berulang atau menyimpan arsip.
+* **Manajemen Kontak**: Simpan daftar teman yang sering ikut patungan. Tambahkan mereka ke sesi dengan satu klik.
+* **Perhitungan Pajak & Biaya Detail**: Input terpisah untuk PPN (%), Pajak Jasa (% atau Rp), Ongkir, dan Diskon Global untuk hasil yang akurat.
+* **Manajemen Item Fleksibel**: **Edit**, hapus, dan tandai item pesanan ke beberapa peserta dengan mudah, dilengkapi dengan logika yang membatasi jumlah tag sesuai kuantitas item.
+* **Dialog Konfirmasi**: Fitur keamanan untuk mencegah penghapusan peserta atau item yang tidak disengaja, serta untuk mereset sesi.
+* **Salin Teks untuk WhatsApp**: Salin hasil perhitungan dalam format teks yang rapi dan detail—lengkap dengan rincian item per orang—siap untuk dibagikan di aplikasi chat.
+* **Desain Responsif & Optimal**: Tampilan yang rapi dan terstruktur baik di desktop maupun mobile, dengan penyesuaian UI seperti menu aksi *dropdown* untuk menghemat ruang di layar kecil.
 
-## 🤔 Mengapa Tidak Ada Fitur Scan Struk?
+## 🤔 Mengapa Input Massal Lebih Baik dari Scan Struk?
 
-Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk (OCR) demi **akurasi dan kebebasan pengguna**.
+Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk (OCR) dan fokus pada **Input Massal** demi **kecepatan, akurasi, dan kebebasan pengguna**.
 
-* **Akurasi adalah Kunci**: Teknologi scan, meskipun canggih, seringkali tidak 100% akurat dalam membaca struk yang berbeda formatnya, lecek, atau buram. Kesalahan kecil pada angka bisa menyebabkan perhitungan menjadi fatal.
-* **Kontrol Penuh di Tangan Anda**: Metode input manual saat ini memastikan **Anda memiliki kontrol penuh** untuk menetapkan setiap item ke peserta yang benar, sesuatu yang tidak bisa dilakukan oleh AI secara otomatis. Ini adalah inti dari proses patungan yang adil.
-* **Gratis & Open-Source Selamanya**: Layanan scan AI yang akurat memerlukan biaya, yang akan memaksa aplikasi ini menjadi berbayar. Dengan tetap sederhana, **Kalkulator Receh akan selalu gratis, open-source, dan dapat diandalkan**.
+* **Akurasi adalah Kunci**: Teknologi scan seringkali tidak 100% akurat membaca struk yang berbeda formatnya. Dengan **Input Massal**, Anda menyalin teks yang sudah pasti benar, menghilangkan risiko kesalahan angka.
+* **Lebih Cepat dari Koreksi**: Proses menyalin-tempel teks dari catatan atau struk digital lalu menekan satu tombol jauh lebih cepat daripada memindai, lalu mengoreksi setiap baris hasil pindai yang mungkin salah.
+* **Gratis & Open-Source Selamanya**: Layanan scan AI yang akurat memerlukan biaya. Dengan tetap fokus pada fitur yang efisien, **Kalkulator Receh akan selalu gratis, open-source, dan dapat diandalkan**.
 
 ## 🚀 Teknologi yang Digunakan
 
@@ -62,36 +62,33 @@ Ingin menjalankan proyek ini di komputer Anda? Ikuti langkah-langkah berikut:
     ```
 
 4.  **Buka Aplikasi**
-    Buka browser Anda dan kunjungi [http://localhost:3000](http://localhost:3000) (atau port lain yang ditampilkan di terminal).
+    Buka browser Anda dan kunjungi [http://localhost:3000](http://localhost:9002) (atau port lain yang ditampilkan di terminal).
 
 ## 💡 Cara Menggunakan
 
-1.  **Menambahkan Peserta ke Sesi**
-    * **Cara Cepat**: Ketik nama teman di kolom *"Nama Peserta Baru..."* lalu tekan `Enter` atau klik tombol `+`. Nama ini akan otomatis tersimpan di kontak Anda untuk penggunaan selanjutnya.
-    * **Dari Kontak**: Klik tombol *"Kelola Kontak"* untuk membuka daftar teman yang pernah Anda simpan. Klik tombol *"Tambah"* di samping nama mereka untuk memasukkannya ke sesi perhitungan saat ini.
+1.  **Kelola Peserta & Sesi**
+    * Ketik nama di kolom *"Nama Peserta Baru..."* lalu tekan `Enter`.
+    * Gunakan tombol **Kontak** untuk menambahkan dari daftar yang tersimpan.
+    * Gunakan **Impor/Ekspor** untuk memuat atau menyimpan sesi perhitungan.
+    * Klik **Reset** untuk memulai dari awal.
 
-2.  **Mencatat Pesanan Masing-Masing**
-    * Setelah seorang peserta ditambahkan, sebuah kartu akan muncul atas namanya.
-    * Di bagian bawah kartu tersebut, ada dua kolom: *"Nama item..."* dan *"Harga..."*.
-    * Isi kedua kolom tersebut (misal: "Nasi Goreng" dan "25000"), lalu klik tombol `+` di sebelahnya. Item akan tercatat di bawah nama peserta tersebut.
-    * Ulangi untuk semua pesanan dari setiap peserta.
+2.  **Input Semua Pesanan (Cara Cepat)**
+    * Di kartu "Daftar Pesanan", gunakan area **Input Massal**.
+    * Ketik atau *copy-paste* semua item dari struk dengan format: `Kuantitas Nama Item HargaTotal` per baris. Contoh: `2 Udang Keju 23836`.
+    * Klik tombol **"Tambahkan Semua Item dari Teks"**.
 
-3.  **Mengedit atau Menghapus Pesanan**
-    * Di samping setiap item yang sudah tercatat, ada ikon pensil (✏️) untuk **mengedit** dan ikon silang (❌) untuk **menghapus**.
+3.  **Tandai & Kelola Item**
+    * Setelah semua item masuk daftar, gunakan tombol aksi di samping setiap item untuk:
+        * **Tandai Peserta** (<UserPlus />): Pilih siapa saja yang memesan item tersebut. Logika aplikasi akan membatasi jumlah pilihan sesuai kuantitas item.
+        * **Beri Diskon** (<Percent />), **Edit** (<Pencil />), atau **Hapus** (<Trash2 />).
 
-4.  **Mengatur Biaya Bersama**
-    * Di kolom kanan, terdapat kartu *"Biaya Tambahan & Total"*.
-    * Masukkan persentase **PPN** dan **Service Tax** jika ada (misal: 12% dan 5%).
-    * Masukkan juga total biaya **Ongkir** dan **Diskon** dalam bentuk Rupiah.
+4.  **Atur Biaya Tambahan**
+    * Isi PPN, Pajak Jasa, Ongkir, dan Diskon Global di kartu "Biaya Tambahan".
 
-5.  **Melihat Hasil Perhitungan**
-    * Aplikasi ini bekerja secara **real-time**. Anda tidak perlu mencari tombol "Hitung".
-    * Setiap kali Anda menambah item atau mengubah biaya tambahan, kartu *"Hasil Patungan"* di kanan bawah akan otomatis diperbarui, menampilkan total yang harus dibayar oleh setiap orang.
-
-6.  **Menyimpan dan Membagikan Hasil**
-    * Setelah semua perhitungan selesai, klik tombol **"Simpan"** di kartu "Hasil Patungan".
-    * Pilih **"Salin Teks untuk WhatsApp"** untuk menyalin ringkasan yang rapi dan siap dibagikan di grup chat.
-    * Pilih **"Unduh sebagai PDF"** untuk menyimpan laporan yang lebih detail dan formal.
+5.  **Lihat & Bagikan Hasil**
+    * Semua perhitungan akan ter-update secara **real-time**.
+    * Atur pembulatan dan pilih siapa yang membayar di kartu "Penyederhanaan".
+    * Klik tombol **"Bagikan Hasil"** di kartu "Hasil Patungan" untuk menyalin ringkasan teks yang super detail dan siap dibagikan di WhatsApp.
 
 ---
 
