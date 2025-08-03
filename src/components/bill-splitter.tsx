@@ -75,86 +75,11 @@ import {
 } from "@/components/ui/tooltip";
 import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, DiscountDetails, SessionState } from '@/types';
 import { calculateSplit } from '@/lib/calculator';
+import { sessionStateSchema } from '@/types';
 import { SaveResultDialog } from './save-result-dialog';
+import { useIsMobile } from '@/hooks/use-is-mobile'; // Corrected import path
 
-const useIsMobile = (breakpoint = 640) => {
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-        const checkScreenSize = () => { setIsMobile(window.innerWidth < breakpoint); };
-        checkScreenSize();
-        window.addEventListener('resize', checkScreenSize);
-        return () => window.removeEventListener('resize', checkScreenSize);
-    }, [breakpoint]);
-    return isMobile;
-};
-
-// --- START: Updated TagParticipantDialog with Quantity Limit Logic ---
-function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { item: BillItem, sessionParticipants: SessionParticipant[], onTag: (itemId: string, participantIds: string[]) => void, children: React.ReactNode }) {
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(item.sharedBy));
-    
-    const isLimitReached = selectedIds.size >= item.quantity;
-
-    const handleCheckChange = (participantId: string, checked: boolean) => {
-        const newIds = new Set(selectedIds);
-        if (checked) {
-            // Only add if limit is not reached
-            if (newIds.size < item.quantity) {
-                newIds.add(participantId);
-            }
-        } else {
-            newIds.delete(participantId);
-        }
-        setSelectedIds(newIds);
-    };
-
-    const handleSave = () => onTag(item.id, Array.from(selectedIds));
-    
-    return (
-        <Dialog>
-            <DialogTrigger asChild>{children}</DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Tandai Peserta untuk Item:</DialogTitle>
-                    <DialogDescription>
-                        <span dangerouslySetInnerHTML={{ __html: item.description }}/>
-                        <br/>
-                        Pilih hingga <strong>{item.quantity} peserta</strong> (sesuai kuantitas item).
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-1 max-h-64 overflow-y-auto">
-                    {sessionParticipants.map(p => {
-                        const isSelected = selectedIds.has(p.id);
-                        const isDisabled = !isSelected && isLimitReached;
-
-                        return (
-                            <div 
-                                key={p.id} 
-                                className={`flex items-center space-x-3 p-2 rounded-md transition-opacity ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'}`}
-                                onClick={() => !isDisabled && handleCheckChange(p.id, !isSelected)}
-                            >
-                                <Checkbox 
-                                    id={`p-${p.id}`} 
-                                    checked={isSelected}
-                                    disabled={isDisabled}
-                                />
-                                <Label 
-                                    htmlFor={`p-${p.id}`} 
-                                    className={`flex-1 font-normal text-sm ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                                    dangerouslySetInnerHTML={{ __html: p.name }}
-                                />
-                            </div>
-                        );
-                    })}
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild><Button onClick={handleSave}>Simpan Tanda</Button></DialogClose>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-// --- END: Updated TagParticipantDialog ---
-
+// Helper Components (No changes needed here, assuming they are correct from previous turn)
 function ConfirmationDialog({ title, description, onConfirm, children }: { title: string; description: string; onConfirm: () => void; children: React.ReactNode; }) {
   return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><DialogClose asChild><Button variant="destructive" onClick={onConfirm}>Konfirmasi</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
 }
@@ -162,15 +87,15 @@ function EditItemDialog({ item, onSave, children }: { item: BillItem; onSave: (i
     const [description, setDescription] = useState(item.description);
     const [quantity, setQuantity] = useState(item.quantity.toString());
     const [price, setPrice] = useState(item.price.toString());
-    const [formattedPrice, setFormattedPrice] = useState('');
-    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => { const numericValue = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10); const newPrice = isNaN(numericValue) ? '0' : String(numericValue); const newFormattedPrice = isNaN(numericValue) ? '' : new Intl.NumberFormat('id-ID').format(numericValue); setPrice(newPrice); setFormattedPrice(newFormattedPrice); };
+    const [formattedPrice, setFormattedPrice] = useState(() => new Intl.NumberFormat('id-ID').format(item.price));
+    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => { const numericValue = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10); setPrice(isNaN(numericValue) ? '0' : String(numericValue)); setFormattedPrice(isNaN(numericValue) ? '' : new Intl.NumberFormat('id-ID').format(numericValue)); };
     useEffect(() => { setPrice(item.price.toString()); setFormattedPrice(new Intl.NumberFormat('id-ID').format(item.price)); }, [item]);
     const { toast } = useToast();
     const handleSave = () => { const qty = parseInt(quantity, 10); const prc = parseFloat(price); if (!description.trim() || isNaN(qty) || qty <= 0 || isNaN(prc) || prc < 0) { toast({ variant: 'destructive', description: "Semua field harus diisi dengan benar." }); return; } onSave(item.id, description, qty, prc); };
     return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>Edit Item</DialogTitle><DialogDescription>Ubah detail pesanan di bawah ini.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2"><Label htmlFor="edit-desc">Nama Item</Label><Input id="edit-desc" value={description} onChange={(e) => setDescription(e.target.value)} /></div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label htmlFor="edit-qty">Kuantitas</Label><Input id="edit-qty" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></div><div className="space-y-2"><Label htmlFor="edit-price">Harga Satuan</Label><Input id="edit-price" type="text" value={formattedPrice} onChange={handleAmountChange} /></div></div></div><DialogFooter><DialogClose asChild><Button type="button" variant="secondary">Batal</Button></DialogClose><DialogClose asChild><Button type="button" onClick={handleSave}>Simpan Perubahan</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
 }
 function TutorialDialog() {
-    return (<Dialog><DialogTrigger asChild><Button variant="link" className="p-0 h-auto text-muted-foreground gap-1"><HelpCircle className="h-4 w-4" /> Tutorial</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle className="flex items-center gap-2"><HelpCircle/> Panduan Cepat Kalkulator Receh</DialogTitle><DialogDescription>Ikuti langkah-langkah ini untuk membagi tagihan secara efisien.</DialogDescription></DialogHeader><div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4 pt-2"><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Users className="h-4 w-4"/> 1. Kelola Peserta & Sesi</h4><p className="text-muted-foreground pl-6">Tambahkan peserta secara manual, dari kontak, atau impor sesi dari file JSON. Anda juga bisa mengekspor sesi saat ini atau mereset semua data.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> 2. Input Pesanan (Sesuai Struk)</h4><p className="text-muted-foreground pl-6">Gunakan fitur <strong>Input Massal</strong>. Ketik beberapa baris item dari struk dengan format <strong>Qty Nama Item HargaTotal</strong> untuk menambahkan semua pesanan sekaligus.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Receipt className="h-4 w-4"/> 3. Kelola Setiap Item</h4><p className="text-muted-foreground pl-6">Setelah item ditambahkan, gunakan tombol aksi untuk:</p><ul className="list-disc pl-12 text-muted-foreground space-y-1 mt-1"><li><strong className="text-foreground">Tandai Peserta (<UserPlus size={14} className="inline-block"/>):</strong> Pilih siapa saja yang ikut memesan item tersebut.</li><li><strong className="text-foreground">Beri Diskon (<Percent size={14} className="inline-block"/>):</strong> Tambahkan diskon khusus untuk item itu.</li><li><strong className="text-foreground">Edit & Hapus (<Pencil size={14} className="inline-block"/> / <Trash2 size={14} className="inline-block"/>):</strong> Ubah atau hapus item jika ada kesalahan.</li></ul></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Info className="h-4 w-4"/> 4. Atur Biaya Tambahan</h4><p className="text-muted-foreground pl-6">Masukkan PPN, Pajak Jasa, Ongkos Kirim, dan Diskon Global yang berlaku untuk seluruh tagihan.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4"/> 5. Lihat Hasil & Bagikan</h4><p className="text-muted-foreground pl-6">Atur pembulatan dan pilih siapa yang membayar. Hasilnya akan terhitung otomatis dan siap dibagikan ke teman-teman Anda.</p></div></div><DialogFooter><DialogClose asChild><Button>Mengerti!</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
+    return (<Dialog><DialogTrigger asChild><Button variant="link" className="p-0 h-auto text-muted-foreground gap-1"><HelpCircle className="h-4 w-4" /> Tutorial</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle className="flex items-center gap-2"><HelpCircle/> Panduan Cepat Kalkulator Receh</DialogTitle><DialogDescription>Ikuti langkah-langkah ini untuk membagi tagihan secara efisien.</DialogDescription></DialogHeader><div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4 pt-2"><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Users className="h-4 w-4"/> 1. Kelola Peserta & Sesi</h4><p className="text-muted-foreground pl-6">Tambahkan peserta secara manual, dari kontak, atau impor sesi dari file JSON. Anda juga bisa mengekspor sesi saat ini atau mereset semua data.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> 2. Input Pesanan (Cara Cepat)</h4><p className="text-muted-foreground pl-6">Gunakan fitur <strong>Input Massal</strong>. Salin-tempel beberapa baris dari struk dengan format <strong>Qty Nama Item HargaTotal</strong> untuk menambahkan semua pesanan sekaligus.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Receipt className="h-4 w-4"/> 3. Kelola Setiap Item</h4><p className="text-muted-foreground pl-6">Setelah item ditambahkan, gunakan tombol aksi untuk:</p><ul className="list-disc pl-12 text-muted-foreground space-y-1 mt-1"><li><strong className="text-foreground">Tandai Peserta (<UserPlus size={14} className="inline-block"/>):</strong> Pilih siapa saja yang ikut memesan item tersebut.</li><li><strong className="text-foreground">Beri Diskon (<Percent size={14} className="inline-block"/>):</strong> Tambahkan diskon khusus untuk item itu.</li><li><strong className="text-foreground">Edit & Hapus (<Pencil size={14} className="inline-block"/> / <Trash2 size={14} className="inline-block"/>):</strong> Ubah atau hapus item jika ada kesalahan.</li></ul></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Info className="h-4 w-4"/> 4. Atur Biaya Tambahan</h4><p className="text-muted-foreground pl-6">Masukkan PPN, Pajak Jasa, Ongkos Kirim, dan Diskon Global yang berlaku untuk seluruh tagihan.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4"/> 5. Lihat Hasil & Bagikan</h4><p className="text-muted-foreground pl-6">Atur pembulatan dan pilih siapa yang membayar. Hasilnya akan terhitung otomatis dan siap dibagikan ke teman-teman Anda.</p></div></div><DialogFooter><DialogClose asChild><Button>Mengerti!</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
 }
 function ContactsDialog({ onSelect, contacts, setContacts }: { onSelect: (contact: Pick<SessionParticipant, 'id' | 'name'>) => void; contacts: Pick<SessionParticipant, 'id' | 'name'>[]; setContacts: React.Dispatch<React.SetStateAction<Pick<SessionParticipant, 'id' | 'name'>[]>>;}) {
     const [newContactName, setNewContactName] = useState('');
@@ -179,6 +104,13 @@ function ContactsDialog({ onSelect, contacts, setContacts }: { onSelect: (contac
     const addContact = () => { const sanitizedName = DOMPurify.sanitize(newContactName.trim()); if (sanitizedName && !contacts.some(c => c.name === sanitizedName)) { const newContact = { id: crypto.randomUUID(), name: sanitizedName }; const updatedContacts = [...contacts, newContact]; setContacts(updatedContacts); localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts)); setNewContactName(''); } };
     const removeContact = (id: string) => { const updatedContacts = contacts.filter(c => c.id !== id); setContacts(updatedContacts); localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts)); toast({ description: "Kontak telah dihapus." }); };
     return (<Dialog><DialogTrigger asChild><Button variant="outline" size="sm"><BookUser className="mr-2 h-4 w-4" /> Kontak</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Buku Kontak</DialogTitle><DialogDescription>Pilih kontak untuk ditambahkan ke sesi ini atau tambah kontak baru.</DialogDescription></DialogHeader><div className="flex gap-2 my-4"><Input placeholder="Nama Kontak Baru" value={newContactName} onChange={e => setNewContactName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addContact()} /><Button onClick={addContact}><PlusCircle className="h-4 w-4" /></Button></div><div className="max-h-64 space-y-2 overflow-y-auto">{contacts.length > 0 ? contacts.map(contact => (<div key={contact.id} className="flex items-center justify-between rounded-md border p-2"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: contact.name }}></span><div className="flex gap-1"><Button size="sm" variant="secondary" onClick={() => onSelect(contact)}>Tambah</Button><Button size="icon" variant="ghost" onClick={() => removeContact(contact.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></div>)) : <p className="text-sm text-center text-muted-foreground">Belum ada kontak tersimpan.</p>}</div></DialogContent></Dialog>);
+}
+function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { item: BillItem, sessionParticipants: SessionParticipant[], onTag: (itemId: string, participantIds: string[]) => void, children: React.ReactNode }) {
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(item.sharedBy));
+    const isLimitReached = selectedIds.size >= item.quantity;
+    const handleCheckChange = (participantId: string, checked: boolean) => { const newIds = new Set(selectedIds); if (checked) { if (newIds.size < item.quantity) { newIds.add(participantId); } } else { newIds.delete(participantId); } setSelectedIds(newIds); };
+    const handleSave = () => onTag(item.id, Array.from(selectedIds));
+    return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>Tandai Peserta untuk Item:</DialogTitle><DialogDescription><span dangerouslySetInnerHTML={{ __html: item.description }}/><br/>Pilih hingga <strong>{item.quantity} peserta</strong>.</DialogDescription></DialogHeader><div className="space-y-1 max-h-64 overflow-y-auto">{sessionParticipants.map(p => { const isSelected = selectedIds.has(p.id); const isDisabled = !isSelected && isLimitReached; return (<div key={p.id} className={`flex items-center space-x-3 p-2 rounded-md transition-opacity ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'}`} onClick={() => !isDisabled && handleCheckChange(p.id, !isSelected)}><Checkbox id={`p-${p.id}`} checked={isSelected} disabled={isDisabled} /><Label htmlFor={`p-${p.id}`} className={`flex-1 font-normal text-sm ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`} dangerouslySetInnerHTML={{ __html: p.name }}/></div>); })}</div><DialogFooter><DialogClose asChild><Button onClick={handleSave}>Simpan Tanda</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
 }
 function ItemDiscountDialog({ item, onSave, children }: { item: BillItem; onSave: (itemId: string, discount: DiscountDetails) => void; children: React.ReactNode }) {
     const [type, setType] = useState<DiscountDetails['type']>(item.discount.type);
@@ -213,7 +145,7 @@ export function BillSplitter() {
   const CONTACTS_KEY = 'kalkulatorReceh_contacts';
   const importFileRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
-
+  
   useEffect(() => { try { const savedContacts = localStorage.getItem(CONTACTS_KEY); if (savedContacts) setContacts(JSON.parse(savedContacts)); } catch (error) { console.error("Failed to load contacts", error); } }, []);
   const parseFormattedNumber = (value: string): number => Number(value.replace(/[^0-9]/g, '')) || 0;
   const formatRupiah = useCallback((amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount)), []);
@@ -236,8 +168,7 @@ export function BillSplitter() {
   const handleAmountChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => { const numericValue = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10); setter(isNaN(numericValue) ? '' : new Intl.NumberFormat('id-ID').format(numericValue)); };
   
   const handleExport = () => { const sessionState: SessionState = { sessionParticipants, items, ppn, serviceTaxType, serviceTaxValue, deliveryFee, globalDiscountType, globalDiscountValue, rounding, payerId }; const dataStr = JSON.stringify(sessionState, null, 2); const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr); const exportFileDefaultName = `kalkulator-receh-sesi-${new Date().toISOString().slice(0,10)}.json`; const linkElement = document.createElement('a'); linkElement.setAttribute('href', dataUri); linkElement.setAttribute('download', exportFileDefaultName); linkElement.click(); toast({ description: "Sesi berhasil diekspor!" }); };
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => { const fileReader = new FileReader(); const { files } = event.target; if (!files || files.length === 0) return; fileReader.readAsText(files[0], "UTF-8"); fileReader.onload = e => { try { const result = e.target?.result; if (typeof result !== 'string') throw new Error("File content is not a string"); const sessionState: SessionState = JSON.parse(result); setSessionParticipants(sessionState.sessionParticipants); setItems(sessionState.items); setPpn(sessionState.ppn); setServiceTaxType(sessionState.serviceTaxType); setServiceTaxValue(sessionState.serviceTaxValue); setDeliveryFee(sessionState.deliveryFee); setGlobalDiscountType(sessionState.globalDiscountType); setGlobalDiscountValue(sessionState.globalDiscountValue); setRounding(sessionState.rounding); setPayerId(sessionState.payerId); toast({ description: "Sesi berhasil diimpor." }); } catch (error) { toast({ variant: 'destructive', description: "Gagal mengimpor file. Pastikan file JSON valid." }); console.error("Import error:", error); } }; if(importFileRef.current) importFileRef.current.value = ""; };
-  
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => { const fileReader = new FileReader(); const { files } = event.target; if (!files || files.length === 0) return; fileReader.readAsText(files[0], "UTF-8"); fileReader.onload = e => { try { const result = e.target?.result; if (typeof result !== 'string') throw new Error("File content is not a string"); const jsonData = JSON.parse(result); const validatedData = sessionStateSchema.parse(jsonData); setSessionParticipants(validatedData.sessionParticipants); setItems(validatedData.items); setPpn(validatedData.ppn); setServiceTaxType(validatedData.serviceTaxType); setServiceTaxValue(validatedData.serviceTaxValue); setDeliveryFee(validatedData.deliveryFee); setGlobalDiscountType(validatedData.globalDiscountType); setGlobalDiscountValue(validatedData.globalDiscountValue); setRounding(validatedData.rounding); setPayerId(validatedData.payerId || undefined); toast({ description: "Sesi berhasil diimpor." }); } catch (error) { toast({ variant: 'destructive', title: "Gagal Mengimpor", description: "Format file JSON tidak valid atau rusak." }); console.error("Import error:", error); } }; if(importFileRef.current) importFileRef.current.value = ""; };
   const handleResetAll = () => { setSessionParticipants(INITIAL_STATE.sessionParticipants); setItems(INITIAL_STATE.items); setPpn(INITIAL_STATE.ppn); setServiceTaxType(INITIAL_STATE.serviceTaxType); setServiceTaxValue(INITIAL_STATE.serviceTaxValue); setDeliveryFee(INITIAL_STATE.deliveryFee); setGlobalDiscountType(INITIAL_STATE.globalDiscountType); setGlobalDiscountValue(INITIAL_STATE.globalDiscountValue); setRounding(INITIAL_STATE.rounding); setPayerId(INITIAL_STATE.payerId); setBulkText(''); setNewParticipantName(''); toast({ description: "Semua data telah direset." }); }
   
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1975'];
@@ -249,7 +180,7 @@ export function BillSplitter() {
           <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta & Sesi</CardTitle><TutorialDialog /></div>
           <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
             <div className="flex-grow flex gap-2"><Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} /><Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button></div>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:flex-wrap">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:flex sm:items-center sm:flex-wrap">
               <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
               <input type="file" ref={importFileRef} className="hidden" accept=".json" onChange={handleImport} />
               <Button variant="outline" size="sm" onClick={() => importFileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Impor</Button>
@@ -263,33 +194,9 @@ export function BillSplitter() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-3"><Receipt className="h-6 w-6" /> Daftar Pesanan</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          <AnimatePresence>{items.map(item => (
-            <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}>
-              <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p><p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p></div>
-                <div className="flex items-center gap-1 ml-2">
-                  <ParticipantTagList item={item} sessionParticipants={sessionParticipants} />
-                  {isMobile ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><div className="flex items-center w-full"><UserPlus className="mr-2 h-4 w-4"/> Tandai Peserta</div></TagParticipantDialog></DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><ItemDiscountDialog item={item} onSave={handleItemDiscount}><div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/> Beri Diskon</div></ItemDiscountDialog></DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><EditItemDialog item={item} onSave={handleEditItem}><div className="flex items-center w-full"><Pencil className="mr-2 h-4 w-4"/> Edit Item</div></EditItemDialog></DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive"><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><div className="flex items-center w-full"><Trash2 className="mr-2 h-4 w-4"/> Hapus Item</div></ConfirmationDialog></DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
-                    <><ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog><EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog></>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}</AnimatePresence>
+          <AnimatePresence>{items.map(item => (<motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}><div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"><div className="flex-1 min-w-0"><p className="font-medium text-sm truncate" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p><p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p></div><div className="flex items-center gap-1 ml-2"><ParticipantTagList item={item} sessionParticipants={sessionParticipants} />{isMobile ? (<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={(e) => e.preventDefault()}><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><div className="flex items-center w-full"><UserPlus className="mr-2 h-4 w-4"/> Tandai Peserta</div></TagParticipantDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()}><ItemDiscountDialog item={item} onSave={handleItemDiscount}><div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/> Beri Diskon</div></ItemDiscountDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()}><EditItemDialog item={item} onSave={handleEditItem}><div className="flex items-center w-full"><Pencil className="mr-2 h-4 w-4"/> Edit Item</div></EditItemDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive"><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><div className="flex items-center w-full"><Trash2 className="mr-2 h-4 w-4"/> Hapus Item</div></ConfirmationDialog></DropdownMenuItem></DropdownMenuContent></DropdownMenu>) : (<><ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog><EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog></>)}</div></div></motion.div>))}</AnimatePresence>
         </CardContent>
-        <CardFooter className="p-4 pt-0 border-t">
-            <div className="w-full space-y-3 mt-4"><Label htmlFor="bulk-input" className="font-semibold flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> Input Massal (Sesuai Struk)</Label><Textarea id="bulk-input" placeholder={`1 Nasi Goreng Spesial 25000\n2 Es Teh Manis 10000\n1 Kerupuk 2000`} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={5} /><p className="text-xs text-muted-foreground">Format: <strong>Kuantitas</strong> &lt;spasi&gt; <strong>Nama Item</strong> &lt;spasi&gt; <strong>Harga Total</strong> per baris.<br/>Contoh: <code className="bg-muted px-1 rounded">2 Udang Keju 23836</code></p><Button onClick={handleBulkAdd} className="w-full">Tambahkan Semua Item dari Teks</Button></div>
-        </CardFooter>
+        <CardFooter className="p-4 pt-0 border-t"><div className="w-full space-y-3 mt-4"><Label htmlFor="bulk-input" className="font-semibold flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> Input Massal (Cara Cepat)</Label><Textarea id="bulk-input" placeholder={`1 Nasi Goreng Spesial 25000\n2 Es Teh Manis 10000\n1 Kerupuk 2000`} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={5} /><p className="text-xs text-muted-foreground">Format: <strong>Kuantitas</strong> &lt;spasi&gt; <strong>Nama Item</strong> &lt;spasi&gt; <strong>Harga Total</strong> per baris.<br/>Contoh: <code className="bg-muted px-1 rounded">2 Udang Keju 23836</code></p><Button onClick={handleBulkAdd} className="w-full">Tambahkan Semua Item dari Teks</Button></div></CardFooter>
       </Card>
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan</CardTitle></CardHeader>
