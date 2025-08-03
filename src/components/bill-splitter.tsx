@@ -317,231 +317,230 @@ export function BillSplitter() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1975'];
 
   return (
-    <div className="space-y-4">
-      <div className="grid lg:grid-cols-2 gap-4 items-start">
-        {/* Left Column for Inputs */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta Sesi Ini</CardTitle>
-                <TutorialDialog />
-              </div>
-              <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
-                <div className="flex-grow flex gap-2">
-                  <Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} />
-                  <Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button>
-                </div>
-                <div className="sm:mb-0 mb-2">
-                  <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
-                </div>
-              </div>
-            </CardHeader>
-            {sessionParticipants.length > 0 && (
-              <CardContent className="flex flex-wrap gap-2">
-                <AnimatePresence>
-                  {sessionParticipants.map(p => (
-                    <motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
-                       <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium">
-                          <span dangerouslySetInnerHTML={{ __html: p.name }} />
-                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button>
-                       </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </CardContent>
-            )}
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="flex items-center gap-3"><Receipt className="h-6 w-6" /> Daftar Pesanan</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-                <AnimatePresence>
-                  {items.map(item => (
-                    <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}>
-                        <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                            <div>
-                                <p className="font-medium text-sm" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p>
-                                <p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p>
-                            </div>
-                            <div className="flex items-center gap-1">
-                               <ParticipantTagList item={item} sessionParticipants={sessionParticipants} />
-                               <ItemDiscountDialog item={item} onSave={handleItemDiscount}>
-                                   <Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button>
-                               </ItemDiscountDialog>
-                               <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog>
-                               <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                            </div>
+    <div className="space-y-4 max-w-4xl mx-auto">
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta Sesi Ini</CardTitle>
+            <TutorialDialog />
+          </div>
+          <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
+            <div className="flex-grow flex gap-2">
+              <Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} />
+              <Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button>
+            </div>
+            <div className="sm:mb-0 mb-2">
+              <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
+            </div>
+          </div>
+        </CardHeader>
+        {sessionParticipants.length > 0 && (
+          <CardContent className="flex flex-wrap gap-2">
+            <AnimatePresence>
+              {sessionParticipants.map(p => (
+                <motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                   <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium">
+                      <span dangerouslySetInnerHTML={{ __html: p.name }} />
+                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button>
+                   </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </CardContent>
+        )}
+      </Card>
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-3"><Receipt className="h-6 w-6" /> Daftar Pesanan</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+            <AnimatePresence>
+              {items.map(item => (
+                <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}>
+                    <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                        <div>
+                            <p className="font-medium text-sm" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p>
+                            <p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p>
                         </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-            </CardContent>
-            <CardFooter className="bg-muted/30 p-3">
-                 <div className="flex w-full gap-2 items-center">
-                    <Input ref={newItemDescRef} placeholder="Nama item..." value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} className="flex-grow" />
-                    <Input placeholder="Qty" type="number" value={newItemQty} onChange={(e) => setNewItemQty(e.target.value)} className="w-16" />
-                    <Input placeholder="Harga..." value={newItemPrice} onChange={handleAmountChange(setNewItemPrice)} onKeyDown={(e) => {if (e.key === 'Enter') handleAddItem();}} className="w-32" />
+                        <div className="flex items-center gap-1">
+                           <ParticipantTagList item={item} sessionParticipants={sessionParticipants} />
+                           <ItemDiscountDialog item={item} onSave={handleItemDiscount}>
+                               <Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button>
+                           </ItemDiscountDialog>
+                           <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog>
+                           <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                    </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+        </CardContent>
+        <CardFooter className="bg-muted/30 p-3">
+             <div className="flex flex-col sm:flex-row w-full gap-2 items-center">
+                <Input ref={newItemDescRef} placeholder="Nama item..." value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} className="flex-grow" />
+                <div className="flex w-full sm:w-auto gap-2">
+                    <Input placeholder="Qty" type="number" value={newItemQty} onChange={(e) => setNewItemQty(e.target.value)} className="w-16 flex-shrink-0" />
+                    <Input placeholder="Harga..." value={newItemPrice} onChange={handleAmountChange(setNewItemPrice)} onKeyDown={(e) => {if (e.key === 'Enter') handleAddItem();}} className="flex-grow" />
                     <Button className="px-4" onClick={handleAddItem}><PlusCircle className="h-5 w-5" /></Button>
-                 </div>
-            </CardFooter>
-          </Card>
-        </div>
-        
-        {/* Right Column for Costs and Results */}
-        <div className="space-y-4 lg:sticky top-4">
-            <Card>
-                <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan & Total</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label htmlFor="ppn" className="text-xs">PPN (%)</Label><Input id="ppn" type="number" placeholder="0" value={ppn} onChange={e => setPpn(e.target.value)} /></div>
-                        <div className="space-y-2">
-                            <Label className="text-xs">Service Tax</Label>
-                            <div className="flex items-center gap-2">
-                                <RadioGroup value={serviceTaxType} onValueChange={(v: 'amount' | 'percentage') => setServiceTaxType(v)} className="flex">
-                                    <div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="st-percentage" /><Label htmlFor="st-percentage" className="text-xs font-normal">%</Label></div>
-                                    <div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="st-amount" /><Label htmlFor="st-amount" className="text-xs font-normal">Rp</Label></div>
-                                </RadioGroup>
-                                <Input type={serviceTaxType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={serviceTaxValue} onChange={serviceTaxType === 'percentage' ? e => setServiceTaxValue(e.target.value) : handleAmountChange(setServiceTaxValue)} />
-                            </div>
-                        </div>
-                        <div className="space-y-2"><Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label><Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={handleAmountChange(setDeliveryFee)} /></div>
-                         <div className="space-y-2">
-                            <Label className="text-xs">Diskon Global</Label>
-                             <div className="flex items-center gap-2">
-                                 <RadioGroup value={globalDiscountType} onValueChange={(v: 'amount' | 'percentage') => setGlobalDiscountType(v)} className="flex">
-                                     <div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="gd-percentage" /><Label htmlFor="gd-percentage" className="text-xs font-normal">%</Label></div>
-                                     <div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="gd-amount" /><Label htmlFor="gd-amount" className="text-xs font-normal">Rp</Label></div>
-                                 </RadioGroup>
-                                 <Input type={globalDiscountType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={globalDiscountValue} onChange={globalDiscountType === 'percentage' ? e => setGlobalDiscountValue(e.target.value) : handleAmountChange(setGlobalDiscountValue)} />
-                             </div>
-                        </div>
-                    </div>
-                    {summary && <Separator />}
-                    {summary && (
-                      <div className='space-y-2 text-sm'>
-                           <div className="flex justify-between"><span className="text-muted-foreground">Subtotal (Setelah Diskon Item)</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div>
-                           <div className="flex justify-between"><span className="text-muted-foreground">PPN ({ppnValue}%)</span><span>{formatRupiah(summary.ppnAmount)}</span></div>
-                           <div className="flex justify-between"><span className="text-muted-foreground">Service Tax</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span>{formatRupiah(summary.deliveryFee)}</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">Diskon (Global)</span><span className='text-destructive'>-{formatRupiah(parseFormattedNumber(globalDiscountValue))}</span></div>
-                          <Separator />
-                           <div className="flex justify-between items-center font-bold text-primary"><span className="text-base">Total Tagihan</span><span className="text-xl">{formatRupiah(summary.totalBill)}</span></div>
-                      </div>
-                    )}
-                </CardContent>
-            </Card>
-            
-          {summary && sessionParticipants.length > 0 && (
-          <>
-            <Card>
-                <CardHeader><CardTitle className="flex items-center gap-3"><Sparkles className="h-6 w-6"/> Opsi & Penyederhanaan</CardTitle></CardHeader>
-                <CardContent className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Pembulatan</Label>
-                        <Select onValueChange={(val) => setRounding(parseInt(val))} defaultValue="0">
-                            <SelectTrigger><SelectValue placeholder="Pilih Pembulatan" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="0">Tidak ada pembulatan</SelectItem>
-                                <SelectItem value="100">Bulatkan ke atas (Rp 100)</SelectItem>
-                                <SelectItem value="500">Bulatkan ke atas (Rp 500)</SelectItem>
-                                <SelectItem value="1000">Bulatkan ke atas (Rp 1.000)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Siapa yang Bayar?</Label>
-                        <Select onValueChange={(id) => setPayerId(id)} value={payerId}>
-                            <SelectTrigger><SelectValue placeholder="Pilih Pembayar" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">Belum Ditentukan</SelectItem>
-                                {sessionParticipants.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {summary.roundingDifference !== 0 && (
-                        <p className="sm:col-span-2 text-sm text-muted-foreground">
-                            {summary.roundingDifference > 0 ? 'Total kelebihan bayar (tip) dari pembulatan: ' : 'Total kekurangan bayar dari pembulatan: '}
-                            <span className="font-bold text-primary">{formatRupiah(Math.abs(summary.roundingDifference))}</span>
-                        </p>
-                    )}
-                </CardContent>
-            </Card>
-
-            {summary.transactions.length > 0 && (
+                </div>
+             </div>
+        </CardFooter>
+      </Card>
+      <Card>
+          <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2"><Label htmlFor="ppn" className="text-xs">PPN (%)</Label><Input id="ppn" type="number" placeholder="0" value={ppn} onChange={e => setPpn(e.target.value)} /></div>
+              <div className="space-y-2">
+                  <Label className="text-xs">Service Tax</Label>
+                  <div className="flex items-center gap-2">
+                      <RadioGroup value={serviceTaxType} onValueChange={(v: 'amount' | 'percentage') => setServiceTaxType(v)} className="flex">
+                          <div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="st-percentage" /><Label htmlFor="st-percentage" className="text-xs font-normal">%</Label></div>
+                          <div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="st-amount" /><Label htmlFor="st-amount" className="text-xs font-normal">Rp</Label></div>
+                      </RadioGroup>
+                      <Input type={serviceTaxType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={serviceTaxValue} onChange={serviceTaxType === 'percentage' ? e => setServiceTaxValue(e.target.value) : handleAmountChange(setServiceTaxValue)} />
+                  </div>
+              </div>
+              <div className="space-y-2"><Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label><Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={handleAmountChange(setDeliveryFee)} /></div>
+               <div className="space-y-2">
+                  <Label className="text-xs">Diskon Global</Label>
+                   <div className="flex items-center gap-2">
+                       <RadioGroup value={globalDiscountType} onValueChange={(v: 'amount' | 'percentage') => setGlobalDiscountType(v)} className="flex">
+                           <div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="gd-percentage" /><Label htmlFor="gd-percentage" className="text-xs font-normal">%</Label></div>
+                           <div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="gd-amount" /><Label htmlFor="gd-amount" className="text-xs font-normal">Rp</Label></div>
+                       </RadioGroup>
+                       <Input type={globalDiscountType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={globalDiscountValue} onChange={globalDiscountType === 'percentage' ? e => setGlobalDiscountValue(e.target.value) : handleAmountChange(setGlobalDiscountValue)} />
+                   </div>
+              </div>
+          </CardContent>
+      </Card>
+      
+      {summary && sessionParticipants.length > 0 && (
+      <div className="space-y-4">
+        <div className="grid lg:grid-cols-2 gap-4">
+            <div className="space-y-4">
                 <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-3"><Wallet className="h-6 w-6"/> Rincian Utang</CardTitle></CardHeader>
-                    <CardContent>
-                        {summary.transactions.map(t => (
-                            <p key={t.from} className="text-sm">
-                                <span className="font-bold" dangerouslySetInnerHTML={{__html: t.from}}></span> harus bayar <span className="font-bold text-primary">{formatRupiah(t.amount)}</span> ke <span className="font-bold" dangerouslySetInnerHTML={{__html: t.to}}></span>
+                    <CardHeader><CardTitle className="flex items-center gap-3"><Sparkles className="h-6 w-6"/> Penyederhanaan</CardTitle></CardHeader>
+                    <CardContent className="grid sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Pembulatan</Label>
+                            <Select onValueChange={(val) => setRounding(parseInt(val))} defaultValue="0">
+                                <SelectTrigger><SelectValue placeholder="Pilih Pembulatan" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="0">Tidak ada pembulatan</SelectItem>
+                                    <SelectItem value="100">Bulatkan ke atas (Rp 100)</SelectItem>
+                                    <SelectItem value="500">Bulatkan ke atas (Rp 500)</SelectItem>
+                                    <SelectItem value="1000">Bulatkan ke atas (Rp 1.000)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Siapa yang Bayar?</Label>
+                            <Select onValueChange={(id) => setPayerId(id)} value={payerId}>
+                                <SelectTrigger><SelectValue placeholder="Pilih Pembayar" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Belum Ditentukan</SelectItem>
+                                    {sessionParticipants.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {summary.roundingDifference !== 0 && (
+                            <p className="sm:col-span-2 text-sm text-muted-foreground">
+                                {summary.roundingDifference > 0 ? 'Total kelebihan bayar (tip) dari pembulatan: ' : 'Total kekurangan bayar dari pembulatan: '}
+                                <span className="font-bold text-primary">{formatRupiah(Math.abs(summary.roundingDifference))}</span>
                             </p>
-                        ))}
+                        )}
                     </CardContent>
                 </Card>
-            )}
-
-            <Card className="shadow-lg">
-                <CardHeader className="flex flex-row justify-between items-center">
-                    <CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle>
-                    <SaveResultDialog summary={summary} items={items} participants={sessionParticipants}><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan</Button></SaveResultDialog>
-                </CardHeader>
-                <CardContent>
-                    <Accordion type="multiple" className="w-full">
-                      {summary.participants.map(p => (
-                        <AccordionItem value={p.id} key={p.id}>
-                          <AccordionTrigger>
-                             <div className="flex w-full justify-between items-center pr-4">
-                              <span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span>
-                              <span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span>
-                             </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="text-xs space-y-1 pr-4">
-                             <div className="flex justify-between">
-                               <span className="text-muted-foreground">Subtotal Pesanan</span>
-                               <span>{formatRupiah(p.subtotal)}</span>
-                             </div>
-                             <Separator className="my-1" />
-                             <div className="flex justify-between">
-                               <span className="text-muted-foreground">Bagian PPN</span>
-                               <span className="text-green-600">+{formatRupiah(p.ppnShare)}</span>
-                             </div>
-                             <div className="flex justify-between">
-                               <span className="text-muted-foreground">Bagian Service Tax</span>
-                               <span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span>
-                             </div>
-                             <div className="flex justify-between">
-                               <span className="text-muted-foreground">Bagian Ongkir</span>
-                               <span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span>
-                             </div>
-                             <div className="flex justify-between">
-                               <span className="text-muted-foreground">Bagian Diskon</span>
-                               <span className="text-destructive">-{formatRupiah(p.globalDiscountShare + items.filter(i => i.sharedBy.includes(p.id)).reduce((acc, i) => acc + (i.discount.type === 'amount' ? i.discount.value / i.sharedBy.length : (i.price * i.quantity * i.discount.value / 100) / i.sharedBy.length), 0))}</span>
-                             </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                </CardContent>
-            </Card>
-            
-            <Card>
-                <CardHeader><CardTitle>Visualisasi</CardTitle></CardHeader>
-                <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie data={summary.participants} dataKey="totalToPay" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                                {summary.participants.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                            </Pie>
-                            <RechartsTooltip formatter={(value) => formatRupiah(value as number)} />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
-          </>
-      )}
+                {summary.transactions.length > 0 && (
+                    <Card>
+                        <CardHeader><CardTitle className="flex items-center gap-3"><Wallet className="h-6 w-6"/> Rincian Utang</CardTitle></CardHeader>
+                        <CardContent>
+                            {summary.transactions.map(t => (
+                                <p key={t.from} className="text-sm">
+                                    <span className="font-bold" dangerouslySetInnerHTML={{__html: t.from}}></span> harus bayar <span className="font-bold text-primary">{formatRupiah(t.amount)}</span> ke <span className="font-bold" dangerouslySetInnerHTML={{__html: t.to}}></span>
+                                </p>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
+                 <Card>
+                    <CardHeader><CardTitle>Visualisasi</CardTitle></CardHeader>
+                    <CardContent className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={summary.participants} dataKey="totalToPay" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                                    {summary.participants.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                </Pie>
+                                <RechartsTooltip formatter={(value) => formatRupiah(value as number)} />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="space-y-4">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Total Keseluruhan</CardTitle>
+                    </CardHeader>
+                    <CardContent className='space-y-2 text-sm'>
+                       <div className="flex justify-between"><span className="text-muted-foreground">Subtotal (Setelah Diskon Item)</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div>
+                       <div className="flex justify-between"><span className="text-muted-foreground">PPN ({ppnValue}%)</span><span>{formatRupiah(summary.ppnAmount)}</span></div>
+                       <div className="flex justify-between"><span className="text-muted-foreground">Service Tax</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div>
+                       <div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span>{formatRupiah(summary.deliveryFee)}</span></div>
+                       <div className="flex justify-between"><span className="text-muted-foreground">Diskon (Global)</span><span className='text-destructive'>-{formatRupiah(globalDiscountDetails.type === 'percentage' ? summary.totalItemExpenses * (globalDiscountDetails.value/100) : globalDiscountDetails.value)}</span></div>
+                       <Separator />
+                       <div className="flex justify-between items-center font-bold"><span className="text-base">Total Tagihan</span><span className="text-xl">{formatRupiah(summary.totalBill)}</span></div>
+                        {summary.roundingDifference !== 0 && (
+                             <div className="flex justify-between items-center font-bold text-primary"><span className="text-base">Grand Total (Dibulatkan)</span><span className="text-xl">{formatRupiah(summary.grandTotal)}</span></div>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card className="shadow-lg">
+                    <CardHeader className="flex flex-row justify-between items-center">
+                        <CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle>
+                        <SaveResultDialog summary={summary} items={items} participants={sessionParticipants}><Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Simpan</Button></SaveResultDialog>
+                    </CardHeader>
+                    <CardContent>
+                        <Accordion type="multiple" className="w-full">
+                          {summary.participants.map(p => (
+                            <AccordionItem value={p.id} key={p.id}>
+                              <AccordionTrigger>
+                                 <div className="flex w-full justify-between items-center pr-4">
+                                  <span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span>
+                                  <span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span>
+                                 </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="text-xs space-y-1 pr-4">
+                                 <div className="flex justify-between">
+                                   <span className="text-muted-foreground">Subtotal Pesanan</span>
+                                   <span>{formatRupiah(p.subtotal)}</span>
+                                 </div>
+                                 <Separator className="my-1" />
+                                 <div className="flex justify-between">
+                                   <span className="text-muted-foreground">Bagian PPN</span>
+                                   <span className="text-green-600">+{formatRupiah(p.ppnShare)}</span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span className="text-muted-foreground">Bagian Service Tax</span>
+                                   <span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span className="text-muted-foreground">Bagian Ongkir</span>
+                                   <span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span className="text-muted-foreground">Bagian Diskon</span>
+                                   <span className="text-destructive">-{formatRupiah(p.globalDiscountShare + items.filter(i => i.sharedBy.includes(p.id)).reduce((acc, i) => acc + (i.discount.type === 'amount' ? i.discount.value / i.sharedBy.length : (i.price * i.quantity * i.discount.value / 100) / i.sharedBy.length), 0))}</span>
+                                 </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
