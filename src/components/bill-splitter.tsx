@@ -10,7 +10,6 @@ import {
   PlusCircle,
   X,
   FileText,
-  Download,
   Info,
   BookUser,
   HelpCircle,
@@ -26,6 +25,7 @@ import {
   Save,
   RotateCcw,
   Copy,
+  MoreVertical, // Icon for the new dropdown menu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +57,14 @@ import {
   DialogClose,
   DialogDescription,
 } from '@/components/ui/dialog';
+// --- START: Import DropdownMenu ---
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+// --- END: Import DropdownMenu ---
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -70,6 +78,25 @@ import {
 import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, DiscountDetails, SessionState } from '@/types';
 import { calculateSplit } from '@/lib/calculator';
 import { SaveResultDialog } from './save-result-dialog';
+
+// --- START: Custom Hook to Detect Mobile Screen ---
+const useIsMobile = (breakpoint = 640) => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkScreenSize = () => {
+            setIsMobile(window.innerWidth < breakpoint);
+        };
+        
+        checkScreenSize();
+        window.addEventListener('resize', checkScreenSize);
+        
+        return () => window.removeEventListener('resize', checkScreenSize);
+    }, [breakpoint]);
+
+    return isMobile;
+};
+// --- END: Custom Hook ---
 
 function ConfirmationDialog({ title, description, onConfirm, children }: { title: string; description: string; onConfirm: () => void; children: React.ReactNode; }) {
   return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><DialogClose asChild><Button variant="destructive" onClick={onConfirm}>Konfirmasi</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
@@ -135,6 +162,7 @@ export function BillSplitter() {
   const [contacts, setContacts] = useState<Pick<SessionParticipant, 'id' | 'name'>[]>([]);
   const CONTACTS_KEY = 'kalkulatorReceh_contacts';
   const importFileRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile(); // Use the custom hook
 
   useEffect(() => { try { const savedContacts = localStorage.getItem(CONTACTS_KEY); if (savedContacts) setContacts(JSON.parse(savedContacts)); } catch (error) { console.error("Failed to load contacts", error); } }, []);
   const parseFormattedNumber = (value: string): number => Number(value.replace(/[^0-9]/g, '')) || 0;
@@ -171,7 +199,15 @@ export function BillSplitter() {
           <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta & Sesi</CardTitle><TutorialDialog /></div>
           <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
             <div className="flex-grow flex gap-2"><Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} /><Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button></div>
-            <div className="flex items-center gap-2 flex-wrap"><ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/><input type="file" ref={importFileRef} className="hidden" accept=".json" onChange={handleImport} /><Button variant="outline" size="sm" onClick={() => importFileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Impor</Button><Button variant="outline" size="sm" onClick={handleExport}><Save className="mr-2 h-4 w-4" /> Ekspor</Button><ConfirmationDialog title="Reset Semua Data?" description="Aksi ini akan menghapus semua peserta, item, dan pengaturan biaya. Anda yakin ingin melanjutkan?" onConfirm={handleResetAll}><Button variant="destructive" size="sm"><RotateCcw className="mr-2 h-4 w-4"/> Reset</Button></ConfirmationDialog></div>
+            {/* --- START: Responsive Button Group --- */}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:flex-wrap">
+              <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
+              <input type="file" ref={importFileRef} className="hidden" accept=".json" onChange={handleImport} />
+              <Button variant="outline" size="sm" onClick={() => importFileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Impor</Button>
+              <Button variant="outline" size="sm" onClick={handleExport}><Save className="mr-2 h-4 w-4" /> Ekspor</Button>
+              <ConfirmationDialog title="Reset Semua Data?" description="Aksi ini akan menghapus semua peserta, item, dan pengaturan biaya. Anda yakin ingin melanjutkan?" onConfirm={handleResetAll}><Button variant="destructive" size="sm"><RotateCcw className="mr-2 h-4 w-4"/> Reset</Button></ConfirmationDialog>
+            </div>
+            {/* --- END: Responsive Button Group --- */}
           </div>
         </CardHeader>
         {sessionParticipants.length > 0 && (<CardContent className="flex flex-wrap gap-2"><AnimatePresence>{sessionParticipants.map(p => (<motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}><div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium"><span dangerouslySetInnerHTML={{ __html: p.name }} /><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button></div></motion.div>))}</AnimatePresence></CardContent>)}
@@ -179,10 +215,60 @@ export function BillSplitter() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-3"><Receipt className="h-6 w-6" /> Daftar Pesanan</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          <AnimatePresence>{items.map(item => (<motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}><div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"><div><p className="font-medium text-sm" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p><p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p></div><div className="flex items-center gap-1"><ParticipantTagList item={item} sessionParticipants={sessionParticipants} /><ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog><EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"? Aksi ini tidak dapat dibatalkan.`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog></div></div></motion.div>))}</AnimatePresence>
+          <AnimatePresence>{items.map(item => (
+            <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}>
+              <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                <div className="flex-1 min-w-0"> {/* Prevents text from pushing buttons */}
+                  <p className="font-medium text-sm truncate" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p>
+                  <p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p>
+                </div>
+                {/* --- START: Responsive Action Buttons --- */}
+                <div className="flex items-center gap-1 ml-2">
+                  <ParticipantTagList item={item} sessionParticipants={sessionParticipants} />
+                  {isMobile ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}>
+                                <div className="flex items-center w-full"><UserPlus className="mr-2 h-4 w-4"/> Tandai Peserta</div>
+                            </TagParticipantDialog>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <ItemDiscountDialog item={item} onSave={handleItemDiscount}>
+                                <div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/> Beri Diskon</div>
+                            </ItemDiscountDialog>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <EditItemDialog item={item} onSave={handleEditItem}>
+                                <div className="flex items-center w-full"><Pencil className="mr-2 h-4 w-4"/> Edit Item</div>
+                            </EditItemDialog>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                           <ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}>
+                                <div className="flex items-center w-full"><Trash2 className="mr-2 h-4 w-4"/> Hapus Item</div>
+                           </ConfirmationDialog>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <>
+                      <ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog>
+                      <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog>
+                      <EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog>
+                      <ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog>
+                    </>
+                  )}
+                </div>
+                {/* --- END: Responsive Action Buttons --- */}
+              </div>
+            </motion.div>
+          ))}</AnimatePresence>
         </CardContent>
         <CardFooter className="p-4 pt-0 border-t">
-            <div className="w-full space-y-3 mt-4"><Label htmlFor="bulk-input" className="font-semibold flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> Input Massal (Sesuai Struk)</Label><Textarea id="bulk-input" placeholder={`1 Nasi Goreng Spesial 25000\n2 Es Teh Manis 10000\n1 Kerupuk 2000`} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={5} /><p className="text-xs text-muted-foreground">Format: <strong>Kuantitas</strong> &lt;spasi&gt; <strong>Nama Item</strong> &lt;spasi&gt; <strong>Harga Total</strong> per baris.<br/>Contoh: <code className="bg-muted px-1 rounded">2 Udang Keju 23836</code></p><Button onClick={handleBulkAdd} className="w-full">Tambahkan Semua Item dari Teks</Button></div>
+            <div className="w-full space-y-3 mt-4"><Label htmlFor="bulk-input" className="font-semibold flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> Input Massal (Cara Cepat)</Label><Textarea id="bulk-input" placeholder={`1 Nasi Goreng Spesial 25000\n2 Es Teh Manis 10000\n1 Kerupuk 2000`} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={5} /><p className="text-xs text-muted-foreground">Format: <strong>Kuantitas</strong> &lt;spasi&gt; <strong>Nama Item</strong> &lt;spasi&gt; <strong>Harga Total</strong> per baris.<br/>Contoh: <code className="bg-muted px-1 rounded">2 Udang Keju 23836</code></p><Button onClick={handleBulkAdd} className="w-full">Tambahkan Semua Item dari Teks</Button></div>
         </CardFooter>
       </Card>
       <Card>
@@ -197,9 +283,7 @@ export function BillSplitter() {
             <div className="space-y-4">
                  <Card><CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Total Keseluruhan</CardTitle></CardHeader><CardContent className='space-y-2 text-sm'><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Item</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">PPN ({ppnValue}%)</span><span>{formatRupiah(summary.ppnAmount)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Service Tax</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span>{formatRupiah(summary.deliveryFee)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Diskon Global</span><span className='text-destructive'>-{formatRupiah(globalDiscountDetails.type === 'percentage' ? summary.totalItemExpenses * (globalDiscountDetails.value/100) : globalDiscountDetails.value)}</span></div><Separator /><div className="flex justify-between items-center font-bold"><span className="text-base">Total Tagihan</span><span className="text-xl">{formatRupiah(summary.totalBill)}</span></div>{summary.roundingDifference !== 0 && (<div className="flex justify-between items-center font-bold text-primary"><span className="text-base">Grand Total</span><span className="text-xl">{formatRupiah(summary.grandTotal)}</span></div>)}</CardContent></Card>
                 <Card className="shadow-lg"><CardHeader className="flex flex-row justify-between items-center"><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle>
-                {/* --- START: The call to SaveResultDialog is now correct --- */}
                 <SaveResultDialog summary={summary} items={items}><Button variant="outline" size="sm"><Copy className="mr-2 h-4 w-4" /> Bagikan Hasil</Button></SaveResultDialog>
-                {/* --- END: The call is correct --- */}
                 </CardHeader><CardContent><Accordion type="multiple" className="w-full">{summary.participants.map(p => (<AccordionItem value={p.id} key={p.id}><AccordionTrigger><div className="flex w-full justify-between items-center pr-4"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span><span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span></div></AccordionTrigger><AccordionContent className="text-xs space-y-1 pr-4"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Pesanan</span><span>{formatRupiah(p.subtotal)}</span></div><Separator className="my-1" /><div className="flex justify-between"><span className="text-muted-foreground">Bagian PPN ({ppnValue}%)</span><span className="text-green-600">+{formatRupiah(p.ppnShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Service Tax {serviceTaxDetails.type === 'percentage' ? `(${serviceTaxDetails.value}%)` : ''}</span><span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Ongkir</span><span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Diskon</span><span className="text-destructive">-{formatRupiah(p.globalDiscountShare + items.filter(i => i.sharedBy.includes(p.id)).reduce((acc, i) => acc + (i.discount.type === 'amount' ? i.discount.value / (i.sharedBy.length || 1) : (i.price * i.quantity * i.discount.value / 100) / (i.sharedBy.length || 1)), 0))}</span></div></AccordionContent></AccordionItem>))}</Accordion></CardContent></Card>
             </div>
         </div>
