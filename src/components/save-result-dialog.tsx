@@ -14,14 +14,12 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { Summary, BillItem } from '@/types';
 
-// The interface is now simpler
 interface SaveResultDialogProps {
   children: React.ReactNode;
   summary: Summary;
   items: BillItem[];
 }
 
-// Helper to format currency
 const formatRupiah = (amount: number) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount));
 };
@@ -38,9 +36,7 @@ export function SaveResultDialog({ children, summary, items }: SaveResultDialogP
 
     summary.participants.forEach(p => {
       content += `• *${p.name}* » *${formatRupiah(p.totalToPay)}*\n`;
-      
       const participantItems = items.filter(item => item.sharedBy.includes(p.id));
-      
       if (participantItems.length > 0) {
         participantItems.forEach(item => {
           const effectiveQty = item.quantity / (item.sharedBy.length || 1);

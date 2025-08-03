@@ -25,7 +25,7 @@ import {
   Save,
   RotateCcw,
   Copy,
-  MoreVertical, // Icon for the new dropdown menu
+  MoreVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,14 +57,12 @@ import {
   DialogClose,
   DialogDescription,
 } from '@/components/ui/dialog';
-// --- START: Import DropdownMenu ---
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-// --- END: Import DropdownMenu ---
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -79,24 +77,83 @@ import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, Discount
 import { calculateSplit } from '@/lib/calculator';
 import { SaveResultDialog } from './save-result-dialog';
 
-// --- START: Custom Hook to Detect Mobile Screen ---
 const useIsMobile = (breakpoint = 640) => {
     const [isMobile, setIsMobile] = useState(false);
-
     useEffect(() => {
-        const checkScreenSize = () => {
-            setIsMobile(window.innerWidth < breakpoint);
-        };
-        
+        const checkScreenSize = () => { setIsMobile(window.innerWidth < breakpoint); };
         checkScreenSize();
         window.addEventListener('resize', checkScreenSize);
-        
         return () => window.removeEventListener('resize', checkScreenSize);
     }, [breakpoint]);
-
     return isMobile;
 };
-// --- END: Custom Hook ---
+
+// --- START: Updated TagParticipantDialog with Quantity Limit Logic ---
+function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { item: BillItem, sessionParticipants: SessionParticipant[], onTag: (itemId: string, participantIds: string[]) => void, children: React.ReactNode }) {
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(item.sharedBy));
+    
+    const isLimitReached = selectedIds.size >= item.quantity;
+
+    const handleCheckChange = (participantId: string, checked: boolean) => {
+        const newIds = new Set(selectedIds);
+        if (checked) {
+            // Only add if limit is not reached
+            if (newIds.size < item.quantity) {
+                newIds.add(participantId);
+            }
+        } else {
+            newIds.delete(participantId);
+        }
+        setSelectedIds(newIds);
+    };
+
+    const handleSave = () => onTag(item.id, Array.from(selectedIds));
+    
+    return (
+        <Dialog>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Tandai Peserta untuk Item:</DialogTitle>
+                    <DialogDescription>
+                        <span dangerouslySetInnerHTML={{ __html: item.description }}/>
+                        <br/>
+                        Pilih hingga <strong>{item.quantity} peserta</strong> (sesuai kuantitas item).
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {sessionParticipants.map(p => {
+                        const isSelected = selectedIds.has(p.id);
+                        const isDisabled = !isSelected && isLimitReached;
+
+                        return (
+                            <div 
+                                key={p.id} 
+                                className={`flex items-center space-x-3 p-2 rounded-md transition-opacity ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'}`}
+                                onClick={() => !isDisabled && handleCheckChange(p.id, !isSelected)}
+                            >
+                                <Checkbox 
+                                    id={`p-${p.id}`} 
+                                    checked={isSelected}
+                                    disabled={isDisabled}
+                                />
+                                <Label 
+                                    htmlFor={`p-${p.id}`} 
+                                    className={`flex-1 font-normal text-sm ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                    dangerouslySetInnerHTML={{ __html: p.name }}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button onClick={handleSave}>Simpan Tanda</Button></DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+// --- END: Updated TagParticipantDialog ---
 
 function ConfirmationDialog({ title, description, onConfirm, children }: { title: string; description: string; onConfirm: () => void; children: React.ReactNode; }) {
   return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><DialogClose asChild><Button variant="destructive" onClick={onConfirm}>Konfirmasi</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
@@ -113,7 +170,7 @@ function EditItemDialog({ item, onSave, children }: { item: BillItem; onSave: (i
     return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>Edit Item</DialogTitle><DialogDescription>Ubah detail pesanan di bawah ini.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2"><Label htmlFor="edit-desc">Nama Item</Label><Input id="edit-desc" value={description} onChange={(e) => setDescription(e.target.value)} /></div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label htmlFor="edit-qty">Kuantitas</Label><Input id="edit-qty" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></div><div className="space-y-2"><Label htmlFor="edit-price">Harga Satuan</Label><Input id="edit-price" type="text" value={formattedPrice} onChange={handleAmountChange} /></div></div></div><DialogFooter><DialogClose asChild><Button type="button" variant="secondary">Batal</Button></DialogClose><DialogClose asChild><Button type="button" onClick={handleSave}>Simpan Perubahan</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
 }
 function TutorialDialog() {
-    return (<Dialog><DialogTrigger asChild><Button variant="link" className="p-0 h-auto text-muted-foreground gap-1"><HelpCircle className="h-4 w-4" /> Tutorial</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle className="flex items-center gap-2"><HelpCircle/> Cara Menggunakan Kalkulator Receh</DialogTitle></DialogHeader><div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4"><p>Selamat datang! Ikuti langkah-langkah ini untuk membagi tagihan dengan cepat.</p><div><h4 className="font-semibold mb-1">1. Tambahkan Semua Peserta</h4><p className="text-muted-foreground">Masukkan nama semua teman yang ikut patungan. Gunakan "Buku Kontak" untuk mempercepat.</p></div><div><h4 className="font-semibold mb-1">2. Input Semua Pesanan</h4><p className="text-muted-foreground">Gunakan fitur "Input Massal" untuk menyalin semua item dari struk sekaligus. Ini cara tercepat!</p></div><div><h4 className="font-semibold mb-1">3. Tandai Pemilik & Diskon Item</h4><p className="text-muted-foreground">Di samping setiap item, klik <UserPlus className="h-4 w-4 inline-block mx-1" /> untuk menandai siapa saja yang memesan dan <Percent className="h-4 w-4 inline-block mx-1" /> jika ada diskon khusus.</p></div><div><h4 className="font-semibold mb-1">4. Atur Biaya Tambahan</h4><p className="text-muted-foreground">Isi PPN, Ongkir, dan Diskon umum. Anda juga bisa mengatur pembulatan dan memilih siapa yang membayar tagihan.</p></div><div><h4 className="font-semibold mb-1">5. Selesai!</h4><p className="text-muted-foreground">Semua perhitungan terjadi secara real-time. Langsung lihat hasilnya, visualisasi, dan simpan jika perlu.</p></div></div><DialogFooter><DialogClose asChild><Button>Mengerti!</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
+    return (<Dialog><DialogTrigger asChild><Button variant="link" className="p-0 h-auto text-muted-foreground gap-1"><HelpCircle className="h-4 w-4" /> Tutorial</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle className="flex items-center gap-2"><HelpCircle/> Panduan Cepat Kalkulator Receh</DialogTitle><DialogDescription>Ikuti langkah-langkah ini untuk membagi tagihan secara efisien.</DialogDescription></DialogHeader><div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4 pt-2"><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Users className="h-4 w-4"/> 1. Kelola Peserta & Sesi</h4><p className="text-muted-foreground pl-6">Tambahkan peserta secara manual, dari kontak, atau impor sesi dari file JSON. Anda juga bisa mengekspor sesi saat ini atau mereset semua data.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> 2. Input Pesanan (Cara Cepat)</h4><p className="text-muted-foreground pl-6">Gunakan fitur <strong>Input Massal</strong>. Salin-tempel beberapa baris dari struk dengan format <strong>Qty Nama Item HargaTotal</strong> untuk menambahkan semua pesanan sekaligus.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Receipt className="h-4 w-4"/> 3. Kelola Setiap Item</h4><p className="text-muted-foreground pl-6">Setelah item ditambahkan, gunakan tombol aksi untuk:</p><ul className="list-disc pl-12 text-muted-foreground space-y-1 mt-1"><li><strong className="text-foreground">Tandai Peserta (<UserPlus size={14} className="inline-block"/>):</strong> Pilih siapa saja yang ikut memesan item tersebut.</li><li><strong className="text-foreground">Beri Diskon (<Percent size={14} className="inline-block"/>):</strong> Tambahkan diskon khusus untuk item itu.</li><li><strong className="text-foreground">Edit & Hapus (<Pencil size={14} className="inline-block"/> / <Trash2 size={14} className="inline-block"/>):</strong> Ubah atau hapus item jika ada kesalahan.</li></ul></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Info className="h-4 w-4"/> 4. Atur Biaya Tambahan</h4><p className="text-muted-foreground pl-6">Masukkan PPN, Pajak Jasa, Ongkos Kirim, dan Diskon Global yang berlaku untuk seluruh tagihan.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4"/> 5. Lihat Hasil & Bagikan</h4><p className="text-muted-foreground pl-6">Atur pembulatan dan pilih siapa yang membayar. Hasilnya akan terhitung otomatis dan siap dibagikan ke teman-teman Anda.</p></div></div><DialogFooter><DialogClose asChild><Button>Mengerti!</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
 }
 function ContactsDialog({ onSelect, contacts, setContacts }: { onSelect: (contact: Pick<SessionParticipant, 'id' | 'name'>) => void; contacts: Pick<SessionParticipant, 'id' | 'name'>[]; setContacts: React.Dispatch<React.SetStateAction<Pick<SessionParticipant, 'id' | 'name'>[]>>;}) {
     const [newContactName, setNewContactName] = useState('');
@@ -121,13 +178,7 @@ function ContactsDialog({ onSelect, contacts, setContacts }: { onSelect: (contac
     const CONTACTS_KEY = 'kalkulatorReceh_contacts';
     const addContact = () => { const sanitizedName = DOMPurify.sanitize(newContactName.trim()); if (sanitizedName && !contacts.some(c => c.name === sanitizedName)) { const newContact = { id: crypto.randomUUID(), name: sanitizedName }; const updatedContacts = [...contacts, newContact]; setContacts(updatedContacts); localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts)); setNewContactName(''); } };
     const removeContact = (id: string) => { const updatedContacts = contacts.filter(c => c.id !== id); setContacts(updatedContacts); localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts)); toast({ description: "Kontak telah dihapus." }); };
-    return (<Dialog><DialogTrigger asChild><Button variant="outline" size="sm"><BookUser className="mr-2 h-4 w-4" /> Kontak</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Buku Kontak</DialogTitle><DialogDescription>Pilih kontak untuk ditambahkan ke sesi ini.</DialogDescription></DialogHeader><div className="flex gap-2 my-4"><Input placeholder="Nama Kontak Baru" value={newContactName} onChange={e => setNewContactName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addContact()} /><Button onClick={addContact}><PlusCircle className="h-4 w-4" /></Button></div><div className="max-h-64 space-y-2 overflow-y-auto">{contacts.length > 0 ? contacts.map(contact => (<div key={contact.id} className="flex items-center justify-between rounded-md border p-2"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: contact.name }}></span><div className="flex gap-1"><Button size="sm" variant="secondary" onClick={() => onSelect(contact)}>Tambah</Button><Button size="icon" variant="ghost" onClick={() => removeContact(contact.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></div>)) : <p className="text-sm text-center text-muted-foreground">Belum ada kontak tersimpan.</p>}</div></DialogContent></Dialog>);
-}
-function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { item: BillItem, sessionParticipants: SessionParticipant[], onTag: (itemId: string, participantIds: string[]) => void, children: React.ReactNode }) {
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(item.sharedBy));
-    const handleCheckChange = (participantId: string, checked: boolean) => { const newIds = new Set(selectedIds); if (checked) newIds.add(participantId); else newIds.delete(participantId); setSelectedIds(newIds); };
-    const handleSave = () => onTag(item.id, Array.from(selectedIds));
-    return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>Tandai Peserta untuk Item:</DialogTitle><DialogDescription dangerouslySetInnerHTML={{ __html: item.description }}/></DialogHeader><div className="space-y-1 max-h-64 overflow-y-auto">{sessionParticipants.map(p => (<div key={p.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer" onClick={() => handleCheckChange(p.id, !selectedIds.has(p.id))}><Checkbox id={`p-${p.id}`} checked={selectedIds.has(p.id)} /><Label htmlFor={`p-${p.id}`} className="flex-1 font-normal text-sm cursor-pointer" dangerouslySetInnerHTML={{ __html: p.name }}></Label></div>))}</div><DialogFooter><DialogClose asChild><Button onClick={handleSave}>Simpan Tanda</Button></DialogClose></DialogFooter></DialogContent></Dialog>)
+    return (<Dialog><DialogTrigger asChild><Button variant="outline" size="sm"><BookUser className="mr-2 h-4 w-4" /> Kontak</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Buku Kontak</DialogTitle><DialogDescription>Pilih kontak untuk ditambahkan ke sesi ini atau tambah kontak baru.</DialogDescription></DialogHeader><div className="flex gap-2 my-4"><Input placeholder="Nama Kontak Baru" value={newContactName} onChange={e => setNewContactName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addContact()} /><Button onClick={addContact}><PlusCircle className="h-4 w-4" /></Button></div><div className="max-h-64 space-y-2 overflow-y-auto">{contacts.length > 0 ? contacts.map(contact => (<div key={contact.id} className="flex items-center justify-between rounded-md border p-2"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: contact.name }}></span><div className="flex gap-1"><Button size="sm" variant="secondary" onClick={() => onSelect(contact)}>Tambah</Button><Button size="icon" variant="ghost" onClick={() => removeContact(contact.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></div>)) : <p className="text-sm text-center text-muted-foreground">Belum ada kontak tersimpan.</p>}</div></DialogContent></Dialog>);
 }
 function ItemDiscountDialog({ item, onSave, children }: { item: BillItem; onSave: (itemId: string, discount: DiscountDetails) => void; children: React.ReactNode }) {
     const [type, setType] = useState<DiscountDetails['type']>(item.discount.type);
@@ -143,7 +194,6 @@ function ParticipantTagList({ item, sessionParticipants }: { item: BillItem; ses
 
 const INITIAL_STATE = { sessionParticipants: [], items: [], ppn: '', serviceTaxType: 'percentage' as 'amount' | 'percentage', serviceTaxValue: '', deliveryFee: '', globalDiscountType: 'amount' as 'amount' | 'percentage', globalDiscountValue: '', rounding: 0, payerId: undefined as string | undefined };
 
-// Main Component
 export function BillSplitter() {
   const { toast } = useToast();
   const [sessionParticipants, setSessionParticipants] = useState<SessionParticipant[]>(INITIAL_STATE.sessionParticipants);
@@ -162,7 +212,7 @@ export function BillSplitter() {
   const [contacts, setContacts] = useState<Pick<SessionParticipant, 'id' | 'name'>[]>([]);
   const CONTACTS_KEY = 'kalkulatorReceh_contacts';
   const importFileRef = useRef<HTMLInputElement>(null);
-  const isMobile = useIsMobile(); // Use the custom hook
+  const isMobile = useIsMobile();
 
   useEffect(() => { try { const savedContacts = localStorage.getItem(CONTACTS_KEY); if (savedContacts) setContacts(JSON.parse(savedContacts)); } catch (error) { console.error("Failed to load contacts", error); } }, []);
   const parseFormattedNumber = (value: string): number => Number(value.replace(/[^0-9]/g, '')) || 0;
@@ -199,7 +249,6 @@ export function BillSplitter() {
           <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta & Sesi</CardTitle><TutorialDialog /></div>
           <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
             <div className="flex-grow flex gap-2"><Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} /><Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button></div>
-            {/* --- START: Responsive Button Group --- */}
             <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:flex-wrap">
               <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
               <input type="file" ref={importFileRef} className="hidden" accept=".json" onChange={handleImport} />
@@ -207,7 +256,6 @@ export function BillSplitter() {
               <Button variant="outline" size="sm" onClick={handleExport}><Save className="mr-2 h-4 w-4" /> Ekspor</Button>
               <ConfirmationDialog title="Reset Semua Data?" description="Aksi ini akan menghapus semua peserta, item, dan pengaturan biaya. Anda yakin ingin melanjutkan?" onConfirm={handleResetAll}><Button variant="destructive" size="sm"><RotateCcw className="mr-2 h-4 w-4"/> Reset</Button></ConfirmationDialog>
             </div>
-            {/* --- END: Responsive Button Group --- */}
           </div>
         </CardHeader>
         {sessionParticipants.length > 0 && (<CardContent className="flex flex-wrap gap-2"><AnimatePresence>{sessionParticipants.map(p => (<motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}><div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium"><span dangerouslySetInnerHTML={{ __html: p.name }} /><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button></div></motion.div>))}</AnimatePresence></CardContent>)}
@@ -218,51 +266,23 @@ export function BillSplitter() {
           <AnimatePresence>{items.map(item => (
             <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}>
               <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                <div className="flex-1 min-w-0"> {/* Prevents text from pushing buttons */}
-                  <p className="font-medium text-sm truncate" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p>
-                  <p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p>
-                </div>
-                {/* --- START: Responsive Action Buttons --- */}
+                <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p><p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p></div>
                 <div className="flex items-center gap-1 ml-2">
                   <ParticipantTagList item={item} sessionParticipants={sessionParticipants} />
                   {isMobile ? (
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button>
-                      </DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}>
-                                <div className="flex items-center w-full"><UserPlus className="mr-2 h-4 w-4"/> Tandai Peserta</div>
-                            </TagParticipantDialog>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            <ItemDiscountDialog item={item} onSave={handleItemDiscount}>
-                                <div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/> Beri Diskon</div>
-                            </ItemDiscountDialog>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            <EditItemDialog item={item} onSave={handleEditItem}>
-                                <div className="flex items-center w-full"><Pencil className="mr-2 h-4 w-4"/> Edit Item</div>
-                            </EditItemDialog>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                           <ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}>
-                                <div className="flex items-center w-full"><Trash2 className="mr-2 h-4 w-4"/> Hapus Item</div>
-                           </ConfirmationDialog>
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><div className="flex items-center w-full"><UserPlus className="mr-2 h-4 w-4"/> Tandai Peserta</div></TagParticipantDialog></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><ItemDiscountDialog item={item} onSave={handleItemDiscount}><div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/> Beri Diskon</div></ItemDiscountDialog></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><EditItemDialog item={item} onSave={handleEditItem}><div className="flex items-center w-full"><Pencil className="mr-2 h-4 w-4"/> Edit Item</div></EditItemDialog></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive"><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><div className="flex items-center w-full"><Trash2 className="mr-2 h-4 w-4"/> Hapus Item</div></ConfirmationDialog></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : (
-                    <>
-                      <ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog>
-                      <TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog>
-                      <EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog>
-                      <ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog>
-                    </>
+                    <><ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog><EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog></>
                   )}
                 </div>
-                {/* --- END: Responsive Action Buttons --- */}
               </div>
             </motion.div>
           ))}</AnimatePresence>
