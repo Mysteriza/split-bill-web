@@ -1,61 +1,65 @@
-// A person participating in the current bill-splitting session
+// src/types/index.ts
+
+// Keep your existing types like SessionParticipant, BillItem, etc.
+
+export type DiscountDetails = {
+  type: 'percentage' | 'amount';
+  value: number;
+};
+
+export type ServiceTaxDetails = {
+  type: 'percentage' | 'amount';
+  value: number;
+};
+
 export interface SessionParticipant {
   id: string;
   name: string;
 }
 
-// Discount details, can be used for items or globally
-export interface DiscountDetails {
-  type: 'percentage' | 'amount';
-  value: number;
-}
-
-// An item from the receipt
 export interface BillItem {
   id: string;
   description: string;
+  price: number;
   quantity: number;
-  price: number; // Price per single quantity
   discount: DiscountDetails;
-  sharedBy: string[]; // Array of SessionParticipant IDs
+  sharedBy: string[];
 }
 
-// Service Tax details
-export interface ServiceTaxDetails {
-  type: 'amount' | 'percentage';
-  value: number;
+export interface SummaryParticipant extends SessionParticipant {
+  subtotal: number;
+  ppnShare: number;
+  serviceTaxShare: number;
+  deliveryFeeShare: number;
+  globalDiscountShare: number;
+  totalToPay: number;
 }
 
-// A single transaction for debt simplification
-export interface Transaction {
-  from: string; // Participant name
-  to: string;   // Payer name
-  amount: number;
-}
-
-// The final calculated summary
 export interface Summary {
-  totalBill: number; // Precise total before rounding
-  grandTotal: number; // Total after rounding
-  roundingDifference: number; // The tip or deficit from rounding
-  totalItemExpenses: number; // Total after item discounts
+  participants: SummaryParticipant[];
+  transactions: { from: string; to: string; amount: number }[];
+  totalItemExpenses: number;
   ppnAmount: number;
   serviceTaxAmount: number;
   deliveryFee: number;
-  totalDiscount: number; // Sum of all item and global discounts
-  participants: Array<{
-    serviceTaxPercentageShare: number;
-    ppnPercentageShare: number;
-    id: string;
-    name: string;
-    subtotal: number; // Subtotal after item discounts
-    // Detailed cost shares
-    ppnShare: number;
-    serviceTaxShare: number;
-    deliveryFeeShare: number;
-    globalDiscountShare: number;
-    finalShare: number; // Subtotal + all shares before rounding
-    totalToPay: number; // Final amount after rounding
-  }>;
-  transactions: Transaction[];
+  totalDiscount: number;
+  totalBill: number;
+  grandTotal: number;
+  roundingDifference: number;
 }
+
+// --- START: ADD THIS NEW TYPE ---
+// This defines the structure for the JSON export/import feature.
+export interface SessionState {
+  sessionParticipants: SessionParticipant[];
+  items: BillItem[];
+  ppn: string;
+  serviceTaxType: 'amount' | 'percentage';
+  serviceTaxValue: string;
+  deliveryFee: string;
+  globalDiscountType: 'amount' | 'percentage';
+  globalDiscountValue: string;
+  rounding: number;
+  payerId: string | undefined;
+}
+// --- END: ADD THIS NEW TYPE ---
