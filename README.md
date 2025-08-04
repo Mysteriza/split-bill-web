@@ -12,7 +12,7 @@ Aplikasi ini dilengkapi dengan berbagai fitur canggih untuk memastikan proses pa
 
 * **Perhitungan Real-time**: Semua total tagihan dan bagian per orang diperbarui secara otomatis setiap kali Anda mengubah data.
 * **Input Massal Super Cepat**: Salin-tempel (*copy-paste*) beberapa baris pesanan langsung dari struk atau catatan Anda sekaligus.
-* **Manajemen Sesi (Impor/Ekspor)**: Simpan seluruh sesi perhitungan (peserta, item, biaya) ke dalam file **JSON**. Muat kembali sesi tersebut kapan pun Anda butuhkan.
+* **Manajemen Sesi (Impor/Ekspor)**: Simpan seluruh sesi perhitungan (peserta, item, biaya) ke dalam sebuah file **JSON**. Muat kembali sesi tersebut kapan pun Anda butuhkan.
 * **Validasi Input Aman dengan Zod**: Fitur impor dilindungi oleh skema validasi yang ketat, mencegah aplikasi *crash* jika file JSON tidak valid.
 * **Integrasi Kontak Perangkat**: Tambahkan peserta langsung dari **buku kontak HP** atau desktop Anda menggunakan Contact Picker API.
 * **Manajemen Item Fleksibel**: Edit, hapus, dan tandai item ke beberapa peserta, dilengkapi dengan logika yang membatasi jumlah tag sesuai kuantitas item.
@@ -32,7 +32,7 @@ Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk (OCR) dan 
 
 Ingin langsung melihat cara kerja semua fitur tanpa input manual? Unduh file sesi contoh di bawah ini, lalu gunakan fitur **"Impor"** di aplikasi untuk memuatnya.
 
-<a href="./examples/kalkulator-receh-sesi-2025-08-03.json" download><strong>Unduh File JSON</strong></a>
+[**Unduh File JSON Contoh**](https://raw.githack.com/Mysteriza/split-bill-web/main/examples/kalkulator-receh-sesi-2025-08-03.json)
 
 File ini berisi data lengkap untuk 6 peserta dengan 11 item pesanan yang sudah ditandai, lengkap dengan pajak dan diskon.
 
