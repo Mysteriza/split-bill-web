@@ -32,7 +32,7 @@ Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk (OCR) dan 
 
 Ingin langsung melihat cara kerja semua fitur tanpa input manual? Unduh file sesi contoh di bawah ini, lalu gunakan fitur **"Impor"** di aplikasi untuk memuatnya.
 
-[**Unduh File JSON Contoh**](examples/kalkulator-receh-sesi-2025-08-03.json)
+<a href="./examples/kalkulator-receh-sesi-2025-08-03.json" download><strong>Unduh File JSON</strong></a>
 
 File ini berisi data lengkap untuk 6 peserta dengan 11 item pesanan yang sudah ditandai, lengkap dengan pajak dan diskon.
 
