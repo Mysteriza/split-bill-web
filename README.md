@@ -14,7 +14,6 @@ Aplikasi ini dilengkapi dengan berbagai fitur canggih untuk memastikan proses pa
 * **Input Massal Super Cepat**: Salin-tempel (*copy-paste*) beberapa baris pesanan langsung dari struk atau catatan Anda sekaligus.
 * **Manajemen Sesi (Impor/Ekspor)**: Simpan seluruh sesi perhitungan (peserta, item, biaya) ke dalam sebuah file **JSON**. Muat kembali sesi tersebut kapan pun Anda butuhkan.
 * **Validasi Input Aman dengan Zod**: Fitur impor dilindungi oleh skema validasi yang ketat, mencegah aplikasi *crash* jika file JSON tidak valid.
-* **Integrasi Kontak Perangkat**: Tambahkan peserta langsung dari **buku kontak HP** atau desktop Anda menggunakan Contact Picker API.
 * **Manajemen Item Fleksibel**: Edit, hapus, dan tandai item ke beberapa peserta, dilengkapi dengan logika yang membatasi jumlah tag sesuai kuantitas item.
 * **Dialog Konfirmasi**: Fitur keamanan untuk mencegah penghapusan atau reset data yang tidak disengaja.
 * **Salin Teks untuk WhatsApp**: Salin hasil perhitungan dalam format teks yang rapi dan detail—lengkap dengan rincian item per orang—siap untuk dibagikan.
