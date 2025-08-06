@@ -16,7 +16,7 @@ Aplikasi ini dilengkapi dengan berbagai fitur canggih untuk memastikan proses pa
 * **Tandai Utang Lunas**: Di rincian utang, Anda bisa mencentang siapa saja yang sudah membayar, membantu melacak status pembayaran dengan mudah.
 * **Manajemen Item Fleksibel**: Edit, hapus, dan tandai item ke beberapa peserta, dilengkapi dengan logika yang membatasi jumlah tag sesuai kuantitas item.
 * **Salin Teks untuk WhatsApp**: Salin hasil perhitungan dalam format teks yang rapi dan super detail—lengkap dengan rincian item per orang—siap untuk dibagikan.
-* **Desain Responsif & Optimal**: Tampilan yang rapi dan terstruktur baik di desktop maupun mobile, dengan penyesuaian UI seperti menu aksi *dropdown* untuk menghemat ruang.
+* **Desain Responsif & Optimal**: Tampilan yang rapi dan terstruktur baik di desktop maupun mobile, dengan penyesuaian UI seperti menu aksi *dropdown*.
 
 ## 🤔 Mengapa Input Massal Lebih Baik dari Scan Struk?
 
@@ -69,7 +69,7 @@ Ingin menjalankan proyek ini di komputer Anda? Ikuti langkah-langkah berikut:
     ```
 
 4.  **Buka Aplikasi**
-    Buka browser Anda dan kunjungi [http://localhost:3000](http://localhost:3000) (atau port lain yang ditampilkan di terminal).
+    Buka browser Anda dan kunjungi [http://localhost:3000](http://localhost:9002) (atau port lain yang ditampilkan di terminal).
 
 ## 💡 Cara Menggunakan
 
