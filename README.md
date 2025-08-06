@@ -10,21 +10,19 @@ Lihat demonya secara langsung di: **[https://retro-split-bill-web.vercel.app/](h
 
 Aplikasi ini dilengkapi dengan berbagai fitur canggih untuk memastikan proses patungan menjadi secepat dan semudah mungkin:
 
-* **Sesi Tersimpan Otomatis**: Jangan takut kehilangan data. Sesi Anda (peserta, item, biaya) disimpan secara otomatis di browser. Saat Anda kembali, aplikasi akan menawarkan untuk melanjutkan sesi terakhir.
-* **Input Massal Interaktif**: Tempel beberapa baris pesanan dari struk sekaligus. Sistem akan memberikan pratinjau validasi secara *real-time*, menyorot baris yang formatnya benar (✅) atau salah (❌) sebelum ditambahkan.
-* **Manajemen Sesi (Impor/Ekspor)**: Simpan seluruh sesi perhitungan ke dalam file **JSON**. Muat kembali sesi tersebut kapan pun Anda butuhkan, dilindungi oleh validasi skema **Zod** untuk mencegah *crash* akibat file korup.
-* **Tandai Utang Lunas**: Di rincian utang, Anda bisa mencentang siapa saja yang sudah membayar, membantu melacak status pembayaran dengan mudah.
+* **Sesi Tersimpan Otomatis**: Sesi Anda (peserta, item, biaya) disimpan secara otomatis di browser. Saat Anda kembali, aplikasi akan menawarkan untuk melanjutkan sesi terakhir.
+* **Input Massal Interaktif**: Tempel beberapa baris pesanan dari struk sekaligus dengan pratinjau validasi *real-time* untuk memastikan tidak ada kesalahan format.
+* **Manajemen Sesi (Impor/Ekspor)**: Simpan dan muat kembali seluruh sesi perhitungan menggunakan file **JSON**, dilindungi oleh validasi skema **Zod**.
+* **Tandai Utang Lunas**: Lacak status pembayaran dengan mudah menggunakan fitur centang pada rincian utang.
 * **Manajemen Item Fleksibel**: Edit, hapus, dan tandai item ke beberapa peserta, dilengkapi dengan logika yang membatasi jumlah tag sesuai kuantitas item.
 * **Salin Teks untuk WhatsApp**: Salin hasil perhitungan dalam format teks yang rapi dan super detail—lengkap dengan rincian item per orang—siap untuk dibagikan.
-* **Desain Responsif & Optimal**: Tampilan yang rapi dan terstruktur baik di desktop maupun mobile, dengan penyesuaian UI seperti menu aksi *dropdown*.
+* **Desain Responsif & Optimal**: Tampilan yang rapi dan terstruktur baik di desktop maupun mobile.
 
-## 🤔 Mengapa Input Massal Lebih Baik dari Scan Struk?
+## 📱 Coba Aplikasi Android (.apk)
 
-Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk (OCR) dan fokus pada **Input Massal** demi **kecepatan, akurasi, dan kebebasan pengguna**.
+Anda bisa mengunduh dan meng-install versi Android dari aplikasi ini langsung di HP Anda melalui tautan di bawah ini.
 
-* **Akurasi adalah Kunci**: Teknologi scan seringkali tidak 100% akurat. Dengan **Input Massal**, Anda menyalin teks yang sudah pasti benar, menghilangkan risiko kesalahan angka.
-* **Lebih Cepat dari Koreksi**: Proses menyalin-tempel teks dari catatan atau struk digital jauh lebih cepat daripada memindai lalu mengoreksi setiap baris hasil pindai yang mungkin salah.
-* **Gratis & Open-Source Selamanya**: Layanan scan AI yang akurat memerlukan biaya. Dengan tetap fokus pada fitur yang efisien, **Kalkulator Receh akan selalu gratis dan open-source**.
+[**Unduh Kalkulator Receh v1.0.0.apk**](https://github.com/Mysteriza/split-bill-web/releases/download/v1.0.0-assets/Kalkulator.Receh.apk)
 
 ## 🧪 Coba Demo dengan Data Contoh
 
@@ -32,12 +30,19 @@ Ingin langsung melihat cara kerja semua fitur tanpa input manual? Unduh file ses
 
 [**Unduh File JSON Contoh**](https://github.com/Mysteriza/split-bill-web/releases/download/v1.0.0-assets/kalkulator-receh-sesi-2025-08-03.json)
 
-File ini berisi data lengkap untuk 6 peserta dengan 11 item pesanan yang sudah ditandai, lengkap dengan pajak dan diskon.
+## 🤔 Mengapa Input Massal Lebih Baik dari Scan Struk?
+
+Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk (OCR) dan fokus pada **Input Massal** demi **kecepatan, akurasi, dan kebebasan pengguna**.
+
+* **Akurasi adalah Kunci**: Dengan **Input Massal**, Anda menyalin teks yang sudah pasti benar, menghilangkan risiko kesalahan angka.
+* **Lebih Cepat dari Koreksi**: Proses menyalin-tempel teks dari catatan jauh lebih cepat daripada memindai lalu mengoreksi setiap baris hasil pindai yang mungkin salah.
+* **Gratis & Open-Source Selamanya**: **Kalkulator Receh akan selalu gratis dan open-source**.
 
 ## 🚀 Teknologi yang Digunakan
 
 * **Framework**: [Next.js](https://nextjs.org/)
 * **Bahasa**: [TypeScript](https://www.typescriptlang.org/)
+* **Aplikasi Hybrid**: [Capacitor](https://capacitorjs.com/)
 * **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 * **Validasi Skema**: [Zod](https://zod.dev/)
 * **Komponen UI**: [shadcn/ui](https://ui.shadcn.com/)
@@ -50,49 +55,23 @@ File ini berisi data lengkap untuk 6 peserta dengan 11 item pesanan yang sudah d
 Ingin menjalankan proyek ini di komputer Anda? Ikuti langkah-langkah berikut:
 
 1.  **Clone Repositori**
-    Buka terminal Anda dan jalankan perintah berikut:
     ```bash
     git clone [https://github.com/Mysteriza/split-bill-web](https://github.com/Mysteriza/split-bill-web)
     cd split-bill-web
     ```
 
 2.  **Instal Dependensi**
-    Instal semua paket yang dibutuhkan menggunakan `npm`:
     ```bash
     npm install
     ```
 
 3.  **Jalankan Server Development**
-    Jalankan aplikasi dalam mode development:
     ```bash
     npm run dev
     ```
 
 4.  **Buka Aplikasi**
-    Buka browser Anda dan kunjungi [http://localhost:3000](http://localhost:9002) (atau port lain yang ditampilkan di terminal).
-
-## 💡 Cara Menggunakan
-
-1.  **Kelola Peserta & Sesi**
-    * Ketik nama di kolom *"Nama Peserta Baru..."* lalu tekan `Enter`.
-    * Gunakan tombol **Kontak** untuk menambahkan dari daftar yang tersimpan di aplikasi.
-    * Gunakan **Impor/Ekspor** untuk memuat atau menyimpan sesi perhitungan.
-
-2.  **Input Semua Pesanan (Cara Cepat)**
-    * Di kartu "Daftar Pesanan", gunakan area **Input Massal**.
-    * Ketik atau *copy-paste* semua item dengan format: `Kuantitas Nama Item HargaTotal` per baris. Contoh: `2 Udang Keju 23836`.
-    * Lihat pratinjau validasi di bawahnya untuk memastikan semua format benar, lalu klik **"Tambahkan Semua Item"**.
-
-3.  **Tandai & Kelola Item**
-    * Setelah semua item masuk daftar, gunakan tombol aksi di samping setiap item untuk **Tandai Peserta**, **Beri Diskon**, **Edit**, atau **Hapus**.
-
-4.  **Atur Biaya & Penyederhanaan**
-    * Isi PPN, Pajak Jasa, Ongkir, dan Diskon Global.
-    * Atur pembulatan dan pilih siapa yang membayar tagihan. Jika sudah ada yang membayar, centang *checkbox* di kartu "Rincian Utang".
-
-5.  **Lihat & Bagikan Hasil**
-    * Semua perhitungan akan ter-update secara **real-time**.
-    * Klik tombol **"Bagikan Hasil"** untuk menyalin ringkasan teks yang super detail dan siap dikirim ke WhatsApp.
+    Buka browser Anda dan kunjungi [http://localhost:3000](http://localhost:3000) (atau port lain yang ditampilkan di terminal).
 
 ---
 
