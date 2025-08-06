@@ -1,8 +1,6 @@
-// src/types/index.ts
-
 import { z } from 'zod';
 
-// Base Types (No changes)
+// Base Types
 export type DiscountDetails = {
   type: 'percentage' | 'amount';
   value: number;
@@ -27,6 +25,15 @@ export interface BillItem {
   sharedBy: string[];
 }
 
+// --- START: Added isPaid property ---
+export interface Transaction {
+  from: string;
+  to: string;
+  amount: number;
+  isPaid?: boolean; // Optional property to track payment status
+}
+// --- END: Added isPaid property ---
+
 export interface SummaryParticipant extends SessionParticipant {
   subtotal: number;
   ppnShare: number;
@@ -38,7 +45,7 @@ export interface SummaryParticipant extends SessionParticipant {
 
 export interface Summary {
   participants: SummaryParticipant[];
-  transactions: { from: string; to: string; amount: number }[];
+  transactions: Transaction[]; // Now uses the updated Transaction interface
   totalItemExpenses: number;
   ppnAmount: number;
   serviceTaxAmount: number;
@@ -49,9 +56,6 @@ export interface Summary {
   roundingDifference: number;
 }
 
-// --- START: Zod Schema and SessionState Type ---
-
-// Zod schema defines the validation rules for the imported JSON file.
 const participantSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -82,6 +86,4 @@ export const sessionStateSchema = z.object({
   payerId: z.string().optional().nullable(),
 });
 
-// This is the TypeScript type derived from the Zod schema.
 export type SessionState = z.infer<typeof sessionStateSchema>;
-// --- END: Zod Schema and SessionState Type ---

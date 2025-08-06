@@ -26,6 +26,8 @@ import {
   RotateCcw,
   Copy,
   MoreVertical,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,13 +75,82 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, DiscountDetails, SessionState } from '@/types';
+import type { SessionParticipant, BillItem, Summary, ServiceTaxDetails, DiscountDetails, SessionState, Transaction } from '@/types';
 import { calculateSplit } from '@/lib/calculator';
 import { sessionStateSchema } from '@/types';
 import { SaveResultDialog } from './save-result-dialog';
-import { useIsMobile } from '@/hooks/use-is-mobile'; // Corrected import path
+import { useIsMobile } from '@/hooks/use-is-mobile';
 
-// Helper Components (No changes needed here, assuming they are correct from previous turn)
+// --- START: Updated TagParticipantDialog with Clickable Row ---
+function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { item: BillItem, sessionParticipants: SessionParticipant[], onTag: (itemId: string, participantIds: string[]) => void, children: React.ReactNode }) {
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(item.sharedBy));
+    
+    const isLimitReached = selectedIds.size >= item.quantity;
+
+    const handleCheckChange = (participantId: string) => {
+        const newIds = new Set(selectedIds);
+        // Toggle selection
+        if (newIds.has(participantId)) {
+            newIds.delete(participantId);
+        } else {
+            // Only add if limit is not reached
+            if (newIds.size < item.quantity) {
+                newIds.add(participantId);
+            }
+        }
+        setSelectedIds(newIds);
+    };
+
+    const handleSave = () => onTag(item.id, Array.from(selectedIds));
+    
+    return (
+        <Dialog>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Tandai Peserta untuk Item:</DialogTitle>
+                    <DialogDescription>
+                        <span dangerouslySetInnerHTML={{ __html: item.description }}/>
+                        <br/>
+                        Pilih hingga <strong>{item.quantity} peserta</strong> (sesuai kuantitas item).
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {sessionParticipants.map(p => {
+                        const isSelected = selectedIds.has(p.id);
+                        const isDisabled = !isSelected && isLimitReached;
+
+                        return (
+                            <div 
+                                key={p.id} 
+                                className={`flex items-center space-x-3 p-2 rounded-md transition-opacity ${isDisabled ? 'opacity-50' : 'hover:bg-muted/50 cursor-pointer'}`}
+                                // The onClick handler is removed from here to let the Label handle it.
+                            >
+                                <Checkbox 
+                                    id={`p-${p.id}-${item.id}`} // Use unique ID per item to avoid conflicts
+                                    checked={isSelected}
+                                    disabled={isDisabled}
+                                    onCheckedChange={() => handleCheckChange(p.id)}
+                                />
+                                <Label 
+                                    htmlFor={`p-${p.id}-${item.id}`} 
+                                    className={`flex-1 font-normal text-sm w-full ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                    dangerouslySetInnerHTML={{ __html: p.name }}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button onClick={handleSave}>Simpan Tanda</Button></DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+// --- END: Updated TagParticipantDialog ---
+
+// Other Helper Components (No changes below this line, assuming they are correct)
 function ConfirmationDialog({ title, description, onConfirm, children }: { title: string; description: string; onConfirm: () => void; children: React.ReactNode; }) {
   return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><DialogClose asChild><Button variant="destructive" onClick={onConfirm}>Konfirmasi</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
 }
@@ -105,13 +176,6 @@ function ContactsDialog({ onSelect, contacts, setContacts }: { onSelect: (contac
     const removeContact = (id: string) => { const updatedContacts = contacts.filter(c => c.id !== id); setContacts(updatedContacts); localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts)); toast({ description: "Kontak telah dihapus." }); };
     return (<Dialog><DialogTrigger asChild><Button variant="outline" size="sm"><BookUser className="mr-2 h-4 w-4" /> Kontak</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Buku Kontak</DialogTitle><DialogDescription>Pilih kontak untuk ditambahkan ke sesi ini atau tambah kontak baru.</DialogDescription></DialogHeader><div className="flex gap-2 my-4"><Input placeholder="Nama Kontak Baru" value={newContactName} onChange={e => setNewContactName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addContact()} /><Button onClick={addContact}><PlusCircle className="h-4 w-4" /></Button></div><div className="max-h-64 space-y-2 overflow-y-auto">{contacts.length > 0 ? contacts.map(contact => (<div key={contact.id} className="flex items-center justify-between rounded-md border p-2"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: contact.name }}></span><div className="flex gap-1"><Button size="sm" variant="secondary" onClick={() => onSelect(contact)}>Tambah</Button><Button size="icon" variant="ghost" onClick={() => removeContact(contact.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div></div>)) : <p className="text-sm text-center text-muted-foreground">Belum ada kontak tersimpan.</p>}</div></DialogContent></Dialog>);
 }
-function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { item: BillItem, sessionParticipants: SessionParticipant[], onTag: (itemId: string, participantIds: string[]) => void, children: React.ReactNode }) {
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(item.sharedBy));
-    const isLimitReached = selectedIds.size >= item.quantity;
-    const handleCheckChange = (participantId: string, checked: boolean) => { const newIds = new Set(selectedIds); if (checked) { if (newIds.size < item.quantity) { newIds.add(participantId); } } else { newIds.delete(participantId); } setSelectedIds(newIds); };
-    const handleSave = () => onTag(item.id, Array.from(selectedIds));
-    return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>Tandai Peserta untuk Item:</DialogTitle><DialogDescription><span dangerouslySetInnerHTML={{ __html: item.description }}/><br/>Pilih hingga <strong>{item.quantity} peserta</strong>.</DialogDescription></DialogHeader><div className="space-y-1 max-h-64 overflow-y-auto">{sessionParticipants.map(p => { const isSelected = selectedIds.has(p.id); const isDisabled = !isSelected && isLimitReached; return (<div key={p.id} className={`flex items-center space-x-3 p-2 rounded-md transition-opacity ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'}`} onClick={() => !isDisabled && handleCheckChange(p.id, !isSelected)}><Checkbox id={`p-${p.id}`} checked={isSelected} disabled={isDisabled} /><Label htmlFor={`p-${p.id}`} className={`flex-1 font-normal text-sm ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`} dangerouslySetInnerHTML={{ __html: p.name }}/></div>); })}</div><DialogFooter><DialogClose asChild><Button onClick={handleSave}>Simpan Tanda</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
-}
 function ItemDiscountDialog({ item, onSave, children }: { item: BillItem; onSave: (itemId: string, discount: DiscountDetails) => void; children: React.ReactNode }) {
     const [type, setType] = useState<DiscountDetails['type']>(item.discount.type);
     const [value, setValue] = useState(item.discount.value.toString());
@@ -125,9 +189,13 @@ function ParticipantTagList({ item, sessionParticipants }: { item: BillItem; ses
 }
 
 const INITIAL_STATE = { sessionParticipants: [], items: [], ppn: '', serviceTaxType: 'percentage' as 'amount' | 'percentage', serviceTaxValue: '', deliveryFee: '', globalDiscountType: 'amount' as 'amount' | 'percentage', globalDiscountValue: '', rounding: 0, payerId: undefined as string | undefined };
+const SESSION_KEY = 'kalkulatorReceh_lastSession';
+
+type ValidatedLine = { line: string; isValid: boolean; error?: string; data?: BillItem };
 
 export function BillSplitter() {
   const { toast } = useToast();
+  // All state declarations
   const [sessionParticipants, setSessionParticipants] = useState<SessionParticipant[]>(INITIAL_STATE.sessionParticipants);
   const [items, setItems] = useState<BillItem[]>(INITIAL_STATE.items);
   const [newParticipantName, setNewParticipantName] = useState('');
@@ -142,79 +210,128 @@ export function BillSplitter() {
   const [payerId, setPayerId] = useState<string | undefined>(INITIAL_STATE.payerId);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [contacts, setContacts] = useState<Pick<SessionParticipant, 'id' | 'name'>[]>([]);
+  const [paidTransactions, setPaidTransactions] = useState<Set<string>>(new Set());
+  const [isRestored, setIsRestored] = useState(false);
+  const [validatedLines, setValidatedLines] = useState<ValidatedLine[]>([]);
+
+  // Refs and hooks
   const CONTACTS_KEY = 'kalkulatorReceh_contacts';
   const importFileRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
   
-  useEffect(() => { try { const savedContacts = localStorage.getItem(CONTACTS_KEY); if (savedContacts) setContacts(JSON.parse(savedContacts)); } catch (error) { console.error("Failed to load contacts", error); } }, []);
+  // Memoized values and calculations
   const parseFormattedNumber = (value: string): number => Number(value.replace(/[^0-9]/g, '')) || 0;
   const formatRupiah = useCallback((amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(amount)), []);
   const ppnValue = useMemo(() => parseFloat(ppn) || 0, [ppn]);
   const deliveryFeeValue = useMemo(() => parseFormattedNumber(deliveryFee), [deliveryFee]);
   const serviceTaxDetails: ServiceTaxDetails = useMemo(() => ({ type: serviceTaxType, value: serviceTaxType === 'percentage' ? parseFloat(serviceTaxValue) || 0 : parseFormattedNumber(serviceTaxValue) }), [serviceTaxType, serviceTaxValue]);
   const globalDiscountDetails: DiscountDetails = useMemo(() => ({ type: globalDiscountType, value: globalDiscountType === 'percentage' ? parseFloat(globalDiscountValue) || 0 : parseFormattedNumber(globalDiscountValue) }), [globalDiscountType, globalDiscountValue]);
-
+  
+  // Main calculation effect
   useEffect(() => { const result = calculateSplit(sessionParticipants, items, ppnValue, serviceTaxDetails, deliveryFeeValue, globalDiscountDetails, rounding, payerId); setSummary(result); }, [sessionParticipants, items, ppnValue, serviceTaxDetails, deliveryFeeValue, globalDiscountDetails, rounding, payerId]);
 
+  // Autosave and Restore Logic
+  const saveSession = () => { if(isRestored) { const sessionState: SessionState = { sessionParticipants, items, ppn, serviceTaxType, serviceTaxValue, deliveryFee, globalDiscountType, globalDiscountValue, rounding, payerId }; localStorage.setItem(SESSION_KEY, JSON.stringify(sessionState)); }};
+  const loadSession = (sessionState: SessionState) => { setSessionParticipants(sessionState.sessionParticipants); setItems(sessionState.items); setPpn(sessionState.ppn); setServiceTaxType(sessionState.serviceTaxType); setServiceTaxValue(sessionState.serviceTaxValue); setDeliveryFee(sessionState.deliveryFee); setGlobalDiscountType(sessionState.globalDiscountType); setGlobalDiscountValue(sessionState.globalDiscountValue); setRounding(sessionState.rounding); setPayerId(sessionState.payerId || undefined); };
+  
+  useEffect(() => { saveSession(); }, [sessionParticipants, items, ppn, serviceTaxType, serviceTaxValue, deliveryFee, globalDiscountType, globalDiscountValue, rounding, payerId]);
+
+  useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem(SESSION_KEY);
+      if (savedSession) {
+        const sessionData: SessionState = JSON.parse(savedSession);
+        // --- START: Smarter Restore Logic ---
+        if (sessionData.sessionParticipants.length > 0 || sessionData.items.length > 0) {
+          if (window.confirm("Kami menemukan sesi yang belum selesai. Lanjutkan sesi terakhir?")) {
+            loadSession(sessionData);
+          }
+        }
+        // --- END: Smarter Restore Logic ---
+      }
+    } catch (e) { console.error("Could not restore session", e); } finally {
+      setIsRestored(true);
+    }
+    try { const savedContacts = localStorage.getItem(CONTACTS_KEY); if (savedContacts) setContacts(JSON.parse(savedContacts)); } catch (error) { console.error("Failed to load contacts", error); }
+  }, []);
+  
+  // Interactive Bulk Input Validation
+  useEffect(() => {
+    const lines = bulkText.trim().split('\n');
+    if (bulkText.trim() === '') { setValidatedLines([]); return; }
+    const validations: ValidatedLine[] = lines.map(line => {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 3) { return { line, isValid: false, error: 'Format tidak lengkap' }; }
+      const qty = parseInt(parts[0], 10);
+      const totalItemPrice = parseInt(parts[parts.length - 1], 10);
+      const description = parts.slice(1, -1).join(' ');
+      if (isNaN(qty) || qty <= 0) return { line, isValid: false, error: 'Qty tidak valid' };
+      if (isNaN(totalItemPrice) || totalItemPrice < 0) return { line, isValid: false, error: 'Harga tidak valid' };
+      if (!description) return { line, isValid: false, error: 'Nama item kosong' };
+      return { line, isValid: true, data: { id: '', description, price: totalItemPrice / qty, quantity: qty, discount: { type: 'amount', value: 0 }, sharedBy: [] }};
+    });
+    setValidatedLines(validations);
+  }, [bulkText]);
+  
+  // All other handlers...
   const addParticipant = (name: string, id: string = crypto.randomUUID()) => { const sanitizedName = DOMPurify.sanitize(name.trim()); if (sanitizedName && !sessionParticipants.some(p => p.name === sanitizedName)) { setSessionParticipants(prev => [...prev, { id, name: sanitizedName }]); if (!contacts.some(c => c.name === sanitizedName)) { const updatedContacts = [...contacts, { id, name: sanitizedName }]; setContacts(updatedContacts); localStorage.setItem(CONTACTS_KEY, JSON.stringify(updatedContacts)); } toast({ description: `"${sanitizedName}" berhasil ditambahkan.` }); } };
   const handleAddParticipant = () => { addParticipant(newParticipantName); setNewParticipantName(''); };
   const removeParticipant = (id: string) => { setSessionParticipants(prev => prev.filter(p => p.id !== id)); setItems(prev => prev.map(item => ({ ...item, sharedBy: item.sharedBy.filter(pId => pId !== id) }))); };
-  
-  const handleBulkAdd = () => { const lines = bulkText.trim().split('\n'); const newItems: BillItem[] = []; let failedLines = 0; lines.forEach(line => { const parts = line.trim().split(/\s+/); if (parts.length < 3) { failedLines++; return; } const qty = parseInt(parts[0], 10); const totalItemPrice = parseInt(parts[parts.length - 1], 10); const description = parts.slice(1, -1).join(' '); if (!isNaN(qty) && qty > 0 && !isNaN(totalItemPrice) && totalItemPrice >= 0 && description) { newItems.push({ id: crypto.randomUUID(), description, price: totalItemPrice / qty, quantity: qty, discount: { type: 'amount', value: 0 }, sharedBy: [] }); } else { failedLines++; } }); if (newItems.length > 0) { setItems(prev => [...prev, ...newItems]); toast({ description: `${newItems.length} item berhasil ditambahkan.` }); } if (failedLines > 0) { toast({ variant: 'destructive', description: `${failedLines} baris gagal diproses. Pastikan formatnya benar.` }); } setBulkText(''); };
+  const handleBulkAdd = () => { const newItems = validatedLines.filter(v => v.isValid && v.data).map(v => ({...v.data!, id: crypto.randomUUID()})); const failedCount = validatedLines.length - newItems.length; if (newItems.length > 0) { setItems(prev => [...prev, ...newItems]); toast({ description: `${newItems.length} item berhasil ditambahkan.` }); } if (failedCount > 0) { toast({ variant: 'destructive', description: `${failedCount} baris gagal diproses. Periksa pratinjau untuk detail.` }); } else { setBulkText(''); } };
   const handleEditItem = (itemId: string, newDesc: string, newQty: number, newPrice: number) => { setItems(prev => prev.map(item => item.id === itemId ? { ...item, description: newDesc, quantity: newQty, price: newPrice } : item)); toast({ description: "Item berhasil diperbarui." }); };
   const removeItem = (id: string) => setItems(prev => prev.filter(item => item.id !== id));
   const handleTagParticipant = (itemId: string, participantIds: string[]) => setItems(prev => prev.map(item => item.id === itemId ? {...item, sharedBy: participantIds} : item));
   const handleItemDiscount = (itemId: string, discount: DiscountDetails) => setItems(prev => prev.map(item => item.id === itemId ? {...item, discount} : item));
   const handleAmountChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => { const numericValue = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10); setter(isNaN(numericValue) ? '' : new Intl.NumberFormat('id-ID').format(numericValue)); };
-  
   const handleExport = () => { const sessionState: SessionState = { sessionParticipants, items, ppn, serviceTaxType, serviceTaxValue, deliveryFee, globalDiscountType, globalDiscountValue, rounding, payerId }; const dataStr = JSON.stringify(sessionState, null, 2); const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr); const exportFileDefaultName = `kalkulator-receh-sesi-${new Date().toISOString().slice(0,10)}.json`; const linkElement = document.createElement('a'); linkElement.setAttribute('href', dataUri); linkElement.setAttribute('download', exportFileDefaultName); linkElement.click(); toast({ description: "Sesi berhasil diekspor!" }); };
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => { const fileReader = new FileReader(); const { files } = event.target; if (!files || files.length === 0) return; fileReader.readAsText(files[0], "UTF-8"); fileReader.onload = e => { try { const result = e.target?.result; if (typeof result !== 'string') throw new Error("File content is not a string"); const jsonData = JSON.parse(result); const validatedData = sessionStateSchema.parse(jsonData); setSessionParticipants(validatedData.sessionParticipants); setItems(validatedData.items); setPpn(validatedData.ppn); setServiceTaxType(validatedData.serviceTaxType); setServiceTaxValue(validatedData.serviceTaxValue); setDeliveryFee(validatedData.deliveryFee); setGlobalDiscountType(validatedData.globalDiscountType); setGlobalDiscountValue(validatedData.globalDiscountValue); setRounding(validatedData.rounding); setPayerId(validatedData.payerId || undefined); toast({ description: "Sesi berhasil diimpor." }); } catch (error) { toast({ variant: 'destructive', title: "Gagal Mengimpor", description: "Format file JSON tidak valid atau rusak." }); console.error("Import error:", error); } }; if(importFileRef.current) importFileRef.current.value = ""; };
-  const handleResetAll = () => { setSessionParticipants(INITIAL_STATE.sessionParticipants); setItems(INITIAL_STATE.items); setPpn(INITIAL_STATE.ppn); setServiceTaxType(INITIAL_STATE.serviceTaxType); setServiceTaxValue(INITIAL_STATE.serviceTaxValue); setDeliveryFee(INITIAL_STATE.deliveryFee); setGlobalDiscountType(INITIAL_STATE.globalDiscountType); setGlobalDiscountValue(INITIAL_STATE.globalDiscountValue); setRounding(INITIAL_STATE.rounding); setPayerId(INITIAL_STATE.payerId); setBulkText(''); setNewParticipantName(''); toast({ description: "Semua data telah direset." }); }
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => { const fileReader = new FileReader(); const { files } = event.target; if (!files || files.length === 0) return; fileReader.readAsText(files[0], "UTF-8"); fileReader.onload = e => { try { const result = e.target?.result; if (typeof result !== 'string') throw new Error("File content is not a string"); const jsonData = JSON.parse(result); const validatedData = sessionStateSchema.parse(jsonData); loadSession(validatedData); toast({ description: "Sesi berhasil diimpor." }); } catch (error) { toast({ variant: 'destructive', title: "Gagal Mengimpor", description: "Format file JSON tidak valid atau rusak." }); console.error("Import error:", error); } }; if(importFileRef.current) importFileRef.current.value = ""; };
+  const handleResetAll = () => { loadSession(INITIAL_STATE); setBulkText(''); setNewParticipantName(''); localStorage.removeItem(SESSION_KEY); toast({ description: "Semua data telah direset." }); };
+  const handleTogglePaidTransaction = (transactionKey: string) => { setPaidTransactions(prev => { const newSet = new Set(prev); if (newSet.has(transactionKey)) { newSet.delete(transactionKey); } else { newSet.add(transactionKey); } return newSet; }); };
   
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1975'];
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta & Sesi</CardTitle><TutorialDialog /></div>
-          <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
-            <div className="flex-grow flex gap-2"><Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} /><Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button></div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:flex sm:items-center sm:flex-wrap">
-              <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
-              <input type="file" ref={importFileRef} className="hidden" accept=".json" onChange={handleImport} />
-              <Button variant="outline" size="sm" onClick={() => importFileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Impor</Button>
-              <Button variant="outline" size="sm" onClick={handleExport}><Save className="mr-2 h-4 w-4" /> Ekspor</Button>
-              <ConfirmationDialog title="Reset Semua Data?" description="Aksi ini akan menghapus semua peserta, item, dan pengaturan biaya. Anda yakin ingin melanjutkan?" onConfirm={handleResetAll}><Button variant="destructive" size="sm"><RotateCcw className="mr-2 h-4 w-4"/> Reset</Button></ConfirmationDialog>
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center"><CardTitle className="flex items-center gap-3"><Users className="h-6 w-6" /> Peserta & Sesi</CardTitle><TutorialDialog /></div>
+            <div className="flex flex-col sm:flex-row-reverse gap-2 pt-2">
+              <div className="flex-grow flex gap-2"><Input placeholder="Nama Peserta Baru..." value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()} /><Button onClick={handleAddParticipant}><PlusCircle className="h-4 w-4" /></Button></div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:flex sm:items-center sm:flex-wrap">
+                <ContactsDialog onSelect={(c) => addParticipant(c.name, c.id)} contacts={contacts} setContacts={setContacts}/>
+                <input type="file" ref={importFileRef} className="hidden" accept=".json" onChange={handleImport} />
+                <Button variant="outline" size="sm" onClick={() => importFileRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Impor</Button>
+                <Button variant="outline" size="sm" onClick={handleExport}><Save className="mr-2 h-4 w-4" /> Ekspor</Button>
+                <ConfirmationDialog title="Reset Semua Data?" description="Aksi ini akan menghapus semua peserta, item, dan pengaturan biaya. Anda yakin ingin melanjutkan?" onConfirm={handleResetAll}><Button variant="destructive" size="sm"><RotateCcw className="mr-2 h-4 w-4"/> Reset</Button></ConfirmationDialog>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        {sessionParticipants.length > 0 && (<CardContent className="flex flex-wrap gap-2"><AnimatePresence>{sessionParticipants.map(p => (<motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}><div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium"><span dangerouslySetInnerHTML={{ __html: p.name }} /><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button></div></motion.div>))}</AnimatePresence></CardContent>)}
-      </Card>
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-3"><Receipt className="h-6 w-6" /> Daftar Pesanan</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <AnimatePresence>{items.map(item => (<motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}><div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"><div className="flex-1 min-w-0"><p className="font-medium text-sm truncate" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p><p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p></div><div className="flex items-center gap-1 ml-2"><ParticipantTagList item={item} sessionParticipants={sessionParticipants} />{isMobile ? (<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={(e) => e.preventDefault()}><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><div className="flex items-center w-full"><UserPlus className="mr-2 h-4 w-4"/> Tandai Peserta</div></TagParticipantDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()}><ItemDiscountDialog item={item} onSave={handleItemDiscount}><div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/> Beri Diskon</div></ItemDiscountDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()}><EditItemDialog item={item} onSave={handleEditItem}><div className="flex items-center w-full"><Pencil className="mr-2 h-4 w-4"/> Edit Item</div></EditItemDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive"><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><div className="flex items-center w-full"><Trash2 className="mr-2 h-4 w-4"/> Hapus Item</div></ConfirmationDialog></DropdownMenuItem></DropdownMenuContent></DropdownMenu>) : (<><ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog><EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog></>)}</div></div></motion.div>))}</AnimatePresence>
-        </CardContent>
-        <CardFooter className="p-4 pt-0 border-t"><div className="w-full space-y-3 mt-4"><Label htmlFor="bulk-input" className="font-semibold flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> Input Massal (Cara Cepat)</Label><Textarea id="bulk-input" placeholder={`1 Nasi Goreng Spesial 25000\n2 Es Teh Manis 10000\n1 Kerupuk 2000`} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={5} /><p className="text-xs text-muted-foreground">Format: <strong>Kuantitas</strong> &lt;spasi&gt; <strong>Nama Item</strong> &lt;spasi&gt; <strong>Harga Total</strong> per baris.<br/>Contoh: <code className="bg-muted px-1 rounded">2 Udang Keju 23836</code></p><Button onClick={handleBulkAdd} className="w-full">Tambahkan Semua Item dari Teks</Button></div></CardFooter>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><div className="space-y-2"><Label htmlFor="ppn" className="text-xs">PPN (%)</Label><Input id="ppn" type="number" placeholder="0" value={ppn} onChange={e => setPpn(e.target.value)} /></div><div className="space-y-2"><Label className="text-xs">Service Tax</Label><div className="flex items-center gap-2"><RadioGroup value={serviceTaxType} onValueChange={(v: 'amount' | 'percentage') => setServiceTaxType(v)} className="flex"><div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="st-percentage" /><Label htmlFor="st-percentage" className="text-xs font-normal">%</Label></div><div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="st-amount" /><Label htmlFor="st-amount" className="text-xs font-normal">Rp</Label></div></RadioGroup><Input type={serviceTaxType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={serviceTaxValue} onChange={serviceTaxType === 'percentage' ? e => setServiceTaxValue(e.target.value) : handleAmountChange(setServiceTaxValue)} /></div></div><div className="space-y-2"><Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label><Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={handleAmountChange(setDeliveryFee)} /></div><div className="space-y-2"><Label className="text-xs">Diskon Global</Label><div className="flex items-center gap-2"><RadioGroup value={globalDiscountType} onValueChange={(v: 'amount' | 'percentage') => setGlobalDiscountType(v)} className="flex"><div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="gd-percentage" /><Label htmlFor="gd-percentage" className="text-xs font-normal">%</Label></div><div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="gd-amount" /><Label htmlFor="gd-amount" className="text-xs font-normal">Rp</Label></div></RadioGroup><Input type={globalDiscountType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={globalDiscountValue} onChange={globalDiscountType === 'percentage' ? e => setGlobalDiscountValue(e.target.value) : handleAmountChange(setGlobalDiscountValue)} /></div></div></CardContent>
-      </Card>
-      {summary && sessionParticipants.length > 0 && (
-      <div className="space-y-4">
-        <Card><CardHeader><CardTitle>Visualisasi Porsi Bayar</CardTitle></CardHeader><CardContent className="h-80 w-full"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={summary.participants} dataKey="totalToPay" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => { const RADIAN = Math.PI / 180; const radius = innerRadius + (outerRadius - innerRadius) * 1.2; const x = cx + radius * Math.cos(-midAngle * RADIAN); const y = cy + radius * Math.sin(-midAngle * RADIAN); return ( <text x={x} y={y} fill="black" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs"> {`${summary.participants[index].name} (${(percent * 100).toFixed(0)}%)`} </text> ); }}>{summary.participants.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><RechartsTooltip formatter={(value) => formatRupiah(value as number)} /><Legend /></PieChart></ResponsiveContainer></CardContent></Card>
-        <div className="grid lg:grid-cols-2 gap-4">
-            <div className="space-y-4"><Card><CardHeader><CardTitle className="flex items-center gap-3"><Sparkles className="h-6 w-6"/> Penyederhanaan</CardTitle></CardHeader><CardContent className="grid sm:grid-cols-2 gap-4"><div className="space-y-2"><Label>Pembulatan</Label><Select onValueChange={(val) => setRounding(parseInt(val))} defaultValue="0"><SelectTrigger><SelectValue placeholder="Pilih Pembulatan" /></SelectTrigger><SelectContent><SelectItem value="0">Tidak ada</SelectItem><SelectItem value="100">Ke atas (Rp 100)</SelectItem><SelectItem value="500">Ke atas (Rp 500)</SelectItem><SelectItem value="1000">Ke atas (Rp 1.000)</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label>Siapa yang Bayar?</Label><Select onValueChange={(id) => setPayerId(id === 'none' ? undefined : id)} value={payerId}><SelectTrigger><SelectValue placeholder="Pilih Pembayar" /></SelectTrigger><SelectContent><SelectItem value="none">Belum Ditentukan</SelectItem>{sessionParticipants.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>{summary.roundingDifference !== 0 && (<p className="sm:col-span-2 text-sm text-muted-foreground">{summary.roundingDifference > 0 ? 'Total kelebihan (tip): ' : 'Total kekurangan: '}<span className="font-bold text-primary">{formatRupiah(Math.abs(summary.roundingDifference))}</span></p>)}</CardContent></Card>{summary.transactions.length > 0 && (<Card><CardHeader><CardTitle className="flex items-center gap-3"><Wallet className="h-6 w-6"/> Rincian Utang</CardTitle></CardHeader><CardContent>{summary.transactions.map(t => (<p key={t.from} className="text-sm"><span className="font-bold" dangerouslySetInnerHTML={{__html: t.from}}></span> harus bayar <span className="font-bold text-primary">{formatRupiah(t.amount)}</span> ke <span className="font-bold" dangerouslySetInnerHTML={{__html: t.to}}></span></p>))}</CardContent></Card>)}</div>
-            <div className="space-y-4">
-                 <Card><CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Total Keseluruhan</CardTitle></CardHeader><CardContent className='space-y-2 text-sm'><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Item</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">PPN ({ppnValue}%)</span><span>{formatRupiah(summary.ppnAmount)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Service Tax</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span>{formatRupiah(summary.deliveryFee)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Diskon Global</span><span className='text-destructive'>-{formatRupiah(globalDiscountDetails.type === 'percentage' ? summary.totalItemExpenses * (globalDiscountDetails.value/100) : globalDiscountDetails.value)}</span></div><Separator /><div className="flex justify-between items-center font-bold"><span className="text-base">Total Tagihan</span><span className="text-xl">{formatRupiah(summary.totalBill)}</span></div>{summary.roundingDifference !== 0 && (<div className="flex justify-between items-center font-bold text-primary"><span className="text-base">Grand Total</span><span className="text-xl">{formatRupiah(summary.grandTotal)}</span></div>)}</CardContent></Card>
-                <Card className="shadow-lg"><CardHeader className="flex flex-row justify-between items-center"><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle>
-                <SaveResultDialog summary={summary} items={items}><Button variant="outline" size="sm"><Copy className="mr-2 h-4 w-4" /> Bagikan Hasil</Button></SaveResultDialog>
-                </CardHeader><CardContent><Accordion type="multiple" className="w-full">{summary.participants.map(p => (<AccordionItem value={p.id} key={p.id}><AccordionTrigger><div className="flex w-full justify-between items-center pr-4"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span><span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span></div></AccordionTrigger><AccordionContent className="text-xs space-y-1 pr-4"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Pesanan</span><span>{formatRupiah(p.subtotal)}</span></div><Separator className="my-1" /><div className="flex justify-between"><span className="text-muted-foreground">Bagian PPN ({ppnValue}%)</span><span className="text-green-600">+{formatRupiah(p.ppnShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Service Tax {serviceTaxDetails.type === 'percentage' ? `(${serviceTaxDetails.value}%)` : ''}</span><span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Ongkir</span><span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Diskon</span><span className="text-destructive">-{formatRupiah(p.globalDiscountShare + items.filter(i => i.sharedBy.includes(p.id)).reduce((acc, i) => acc + (i.discount.type === 'amount' ? i.discount.value / (i.sharedBy.length || 1) : (i.price * i.quantity * i.discount.value / 100) / (i.sharedBy.length || 1)), 0))}</span></div></AccordionContent></AccordionItem>))}</Accordion></CardContent></Card>
+          </CardHeader>
+          {sessionParticipants.length > 0 && (<CardContent className="flex flex-wrap gap-2"><AnimatePresence>{sessionParticipants.map(p => (<motion.div key={p.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}><div className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-muted text-sm font-medium"><span dangerouslySetInnerHTML={{ __html: p.name }} /><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeParticipant(p.id)}><X className="h-4 w-4" /></Button></div></motion.div>))}</AnimatePresence></CardContent>)}
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-3"><Receipt className="h-6 w-6" /> Daftar Pesanan</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <AnimatePresence>{items.map(item => (<motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}><div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"><div className="flex-1 min-w-0"><p className="font-medium text-sm truncate" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p><p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p></div><div className="flex items-center gap-1 ml-2"><ParticipantTagList item={item} sessionParticipants={sessionParticipants} />{isMobile ? (<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={(e) => e.preventDefault()}><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><div className="flex items-center w-full"><UserPlus className="mr-2 h-4 w-4"/> Tandai Peserta</div></TagParticipantDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()}><ItemDiscountDialog item={item} onSave={handleItemDiscount}><div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/> Beri Diskon</div></ItemDiscountDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()}><EditItemDialog item={item} onSave={handleEditItem}><div className="flex items-center w-full"><Pencil className="mr-2 h-4 w-4"/> Edit Item</div></EditItemDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive"><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><div className="flex items-center w-full"><Trash2 className="mr-2 h-4 w-4"/> Hapus Item</div></ConfirmationDialog></DropdownMenuItem></DropdownMenuContent></DropdownMenu>) : (<><ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog><EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog></>)}</div></div></motion.div>))}</AnimatePresence>
+          </CardContent>
+          <CardFooter className="p-4 pt-0 border-t">
+              <div className="w-full space-y-3 mt-4"><Label htmlFor="bulk-input" className="font-semibold flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> Input Massal (Cara Cepat)</Label><Textarea id="bulk-input" placeholder={`1 Nasi Goreng Spesial 25000\n2 Es Teh Manis 10000\n1 Kerupuk 2000`} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={4} /><p className="text-xs text-muted-foreground">Format: <strong>Qty Nama Item HargaTotal</strong>. Contoh: <code className="bg-muted px-1 rounded">2 Udang Keju 30000</code></p>
+              {validatedLines.length > 0 && (<div className="border rounded-md p-2 space-y-1 max-h-32 overflow-y-auto">{validatedLines.map((v, i) => (<div key={i} className={`flex items-center gap-2 text-xs ${!v.isValid ? 'text-destructive' : 'text-green-600'}`}>{v.isValid ? <CheckCircle2 className="h-3 w-3"/> : <XCircle className="h-3 w-3"/>}<span className="font-mono flex-1 truncate">{v.line}</span>{!v.isValid && <span className="font-semibold">{v.error}</span>}</div>))}</div>)}
+              <Button onClick={handleBulkAdd} className="w-full" disabled={validatedLines.some(v => !v.isValid)}>Tambahkan Item dari Teks</Button></div>
+          </CardFooter>
+        </Card>
+        <Card><CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan</CardTitle></CardHeader><CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><div className="space-y-2"><Label htmlFor="ppn" className="text-xs">PPN (%)</Label><Input id="ppn" type="number" placeholder="0" value={ppn} onChange={e => setPpn(e.target.value)} /></div><div className="space-y-2"><Label className="text-xs">Service Tax</Label><div className="flex items-center gap-2"><RadioGroup value={serviceTaxType} onValueChange={(v: 'amount' | 'percentage') => setServiceTaxType(v)} className="flex"><div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="st-percentage" /><Label htmlFor="st-percentage" className="text-xs font-normal">%</Label></div><div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="st-amount" /><Label htmlFor="st-amount" className="text-xs font-normal">Rp</Label></div></RadioGroup><Input type={serviceTaxType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={serviceTaxValue} onChange={serviceTaxType === 'percentage' ? e => setServiceTaxValue(e.target.value) : handleAmountChange(setServiceTaxValue)} /></div></div><div className="space-y-2"><Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label><Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={handleAmountChange(setDeliveryFee)} /></div><div className="space-y-2"><Label className="text-xs">Diskon Global</Label><div className="flex items-center gap-2"><RadioGroup value={globalDiscountType} onValueChange={(v: 'amount' | 'percentage') => setGlobalDiscountType(v)} className="flex"><div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="gd-percentage" /><Label htmlFor="gd-percentage" className="text-xs font-normal">%</Label></div><div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="gd-amount" /><Label htmlFor="gd-amount" className="text-xs font-normal">Rp</Label></div></RadioGroup><Input type={globalDiscountType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={globalDiscountValue} onChange={globalDiscountType === 'percentage' ? e => setGlobalDiscountValue(e.target.value) : handleAmountChange(setGlobalDiscountValue)} /></div></div></CardContent></Card>
+        {summary && sessionParticipants.length > 0 && (
+        <div className="space-y-4">
+            <Card><CardHeader><CardTitle>Visualisasi Porsi Bayar</CardTitle></CardHeader><CardContent className="h-80 w-full"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={summary.participants} dataKey="totalToPay" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => { const RADIAN = Math.PI / 180; const radius = innerRadius + (outerRadius - innerRadius) * 1.2; const x = cx + radius * Math.cos(-midAngle * RADIAN); const y = cy + radius * Math.sin(-midAngle * RADIAN); return ( <text x={x} y={y} fill="black" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs"> {`${summary.participants[index].name} (${(percent * 100).toFixed(0)}%)`} </text> ); }}>{summary.participants.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><RechartsTooltip formatter={(value) => formatRupiah(value as number)} /><Legend /></PieChart></ResponsiveContainer></CardContent></Card>
+            <div className="grid lg:grid-cols-2 gap-4">
+                <div className="space-y-4"><Card><CardHeader><CardTitle className="flex items-center gap-3"><Sparkles className="h-6 w-6"/> Penyederhanaan</CardTitle></CardHeader><CardContent className="grid sm:grid-cols-2 gap-4"><div className="space-y-2"><Label>Pembulatan</Label><Select onValueChange={(val) => setRounding(parseInt(val))} defaultValue="0"><SelectTrigger><SelectValue placeholder="Pilih Pembulatan" /></SelectTrigger><SelectContent><SelectItem value="0">Tidak ada</SelectItem><SelectItem value="100">Ke atas (Rp 100)</SelectItem><SelectItem value="500">Ke atas (Rp 500)</SelectItem><SelectItem value="1000">Ke atas (Rp 1.000)</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label>Siapa yang Bayar?</Label><Select onValueChange={(id) => setPayerId(id === 'none' ? undefined : id)} value={payerId}><SelectTrigger><SelectValue placeholder="Pilih Pembayar" /></SelectTrigger><SelectContent><SelectItem value="none">Belum Ditentukan</SelectItem>{sessionParticipants.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>{summary.roundingDifference !== 0 && (<p className="sm:col-span-2 text-sm text-muted-foreground">{summary.roundingDifference > 0 ? 'Total kelebihan (tip): ' : 'Total kekurangan: '}<span className="font-bold text-primary">{formatRupiah(Math.abs(summary.roundingDifference))}</span></p>)}</CardContent></Card>
+                {summary.transactions.length > 0 && (<Card><CardHeader><CardTitle className="flex items-center gap-3"><Wallet className="h-6 w-6"/> Rincian Utang</CardTitle></CardHeader><CardContent>{summary.transactions.map(t => { const transactionKey = `${t.from}-${t.to}-${t.amount}`; const isPaid = paidTransactions.has(transactionKey); return (<div key={transactionKey} className="flex items-center gap-2"><Checkbox id={transactionKey} checked={isPaid} onCheckedChange={() => handleTogglePaidTransaction(transactionKey)} /><Label htmlFor={transactionKey} className={`text-sm ${isPaid ? 'line-through text-muted-foreground' : ''}`}><span className="font-bold" dangerouslySetInnerHTML={{__html: t.from}}></span> harus bayar <span className="font-bold text-primary">{formatRupiah(t.amount)}</span> ke <span className="font-bold" dangerouslySetInnerHTML={{__html: t.to}}></span></Label></div>) })}</CardContent></Card>)}</div>
+                <div className="space-y-4">
+                     <Card><CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Total Keseluruhan</CardTitle></CardHeader><CardContent className='space-y-2 text-sm'><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Item</span><span>{formatRupiah(summary.totalItemExpenses)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">PPN ({ppnValue}%)</span><span>{formatRupiah(summary.ppnAmount)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Service Tax</span><span>{formatRupiah(summary.serviceTaxAmount)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Ongkir</span><span>{formatRupiah(summary.deliveryFee)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Diskon Global</span><span className='text-destructive'>-{formatRupiah(globalDiscountDetails.type === 'percentage' ? summary.totalItemExpenses * (globalDiscountDetails.value/100) : globalDiscountDetails.value)}</span></div><Separator /><div className="flex justify-between items-center font-bold"><span className="text-base">Total Tagihan</span><span className="text-xl">{formatRupiah(summary.totalBill)}</span></div>{summary.roundingDifference !== 0 && (<div className="flex justify-between items-center font-bold text-primary"><span className="text-base">Grand Total</span><span className="text-xl">{formatRupiah(summary.grandTotal)}</span></div>)}</CardContent></Card>
+                    <Card className="shadow-lg"><CardHeader className="flex flex-row justify-between items-center"><CardTitle className="flex items-center gap-3 text-lg"><FileText className="h-5 w-5"/> Hasil Patungan</CardTitle><SaveResultDialog summary={summary} items={items}><Button variant="outline" size="sm"><Copy className="mr-2 h-4 w-4" /> Bagikan Hasil</Button></SaveResultDialog></CardHeader><CardContent><Accordion type="multiple" className="w-full">{summary.participants.map(p => (<AccordionItem value={p.id} key={p.id}><AccordionTrigger><div className="flex w-full justify-between items-center pr-4"><span className="font-medium text-sm" dangerouslySetInnerHTML={{ __html: p.name }}></span><span className="font-bold text-base text-primary">{formatRupiah(p.totalToPay)}</span></div></AccordionTrigger><AccordionContent className="text-xs space-y-1 pr-4"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal Pesanan</span><span>{formatRupiah(p.subtotal)}</span></div><Separator className="my-1" /><div className="flex justify-between"><span className="text-muted-foreground">Bagian PPN ({ppnValue}%)</span><span className="text-green-600">+{formatRupiah(p.ppnShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Service Tax {serviceTaxDetails.type === 'percentage' ? `(${serviceTaxDetails.value}%)` : ''}</span><span className="text-green-600">+{formatRupiah(p.serviceTaxShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Ongkir</span><span className="text-green-600">+{formatRupiah(p.deliveryFeeShare)}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Bagian Diskon</span><span className="text-destructive">-{formatRupiah(p.globalDiscountShare + items.filter(i => i.sharedBy.includes(p.id)).reduce((acc, i) => acc + (i.discount.type === 'amount' ? i.discount.value / (i.sharedBy.length || 1) : (i.price * i.quantity * i.discount.value / 100) / (i.sharedBy.length || 1)), 0))}</span></div></AccordionContent></AccordionItem>))}</Accordion></CardContent></Card>
+                </div>
             </div>
         </div>
-      </div>
       )}
     </div>
   );
