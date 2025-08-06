@@ -1,6 +1,6 @@
 # 🧾 Kalkulator Receh
 
-Selamat datang di **Kalkulator Receh**, sebuah aplikasi web modern yang dirancang untuk mempermudah proses pembagian tagihan (*split bill*) bersama teman-teman. Dibangun dengan Next.js dan TypeScript, aplikasi ini menawarkan pengalaman pengguna yang cepat, akurat, dan sangat efisien.
+Selamat datang di **Kalkulator Receh**, sebuah aplikasi web modern yang dirancang untuk mempermudah proses pembagian tagihan (*split bill*) bersama teman-teman. Dibangun dengan Next.js dan TypeScript, aplikasi ini menawarkan pengalaman pengguna yang cerdas, interaktif, dan sangat efisien.
 
 Lihat demonya secara langsung di: **[https://retro-split-bill-web.vercel.app/](https://retro-split-bill-web.vercel.app/)**
 
@@ -10,14 +10,13 @@ Lihat demonya secara langsung di: **[https://retro-split-bill-web.vercel.app/](h
 
 Aplikasi ini dilengkapi dengan berbagai fitur canggih untuk memastikan proses patungan menjadi secepat dan semudah mungkin:
 
-* **Perhitungan Real-time**: Semua total tagihan dan bagian per orang diperbarui secara otomatis setiap kali Anda mengubah data.
-* **Input Massal Super Cepat**: Salin-tempel (*copy-paste*) beberapa baris pesanan langsung dari struk atau catatan Anda sekaligus.
-* **Manajemen Sesi (Impor/Ekspor)**: Simpan seluruh sesi perhitungan (peserta, item, biaya) ke dalam sebuah file **JSON**. Muat kembali sesi tersebut kapan pun Anda butuhkan.
-* **Validasi Input Aman dengan Zod**: Fitur impor dilindungi oleh skema validasi yang ketat, mencegah aplikasi *crash* jika file JSON tidak valid.
+* **Sesi Tersimpan Otomatis**: Jangan takut kehilangan data. Sesi Anda (peserta, item, biaya) disimpan secara otomatis di browser. Saat Anda kembali, aplikasi akan menawarkan untuk melanjutkan sesi terakhir.
+* **Input Massal Interaktif**: Tempel beberapa baris pesanan dari struk sekaligus. Sistem akan memberikan pratinjau validasi secara *real-time*, menyorot baris yang formatnya benar (✅) atau salah (❌) sebelum ditambahkan.
+* **Manajemen Sesi (Impor/Ekspor)**: Simpan seluruh sesi perhitungan ke dalam file **JSON**. Muat kembali sesi tersebut kapan pun Anda butuhkan, dilindungi oleh validasi skema **Zod** untuk mencegah *crash* akibat file korup.
+* **Tandai Utang Lunas**: Di rincian utang, Anda bisa mencentang siapa saja yang sudah membayar, membantu melacak status pembayaran dengan mudah.
 * **Manajemen Item Fleksibel**: Edit, hapus, dan tandai item ke beberapa peserta, dilengkapi dengan logika yang membatasi jumlah tag sesuai kuantitas item.
-* **Dialog Konfirmasi**: Fitur keamanan untuk mencegah penghapusan atau reset data yang tidak disengaja.
-* **Salin Teks untuk WhatsApp**: Salin hasil perhitungan dalam format teks yang rapi dan detail—lengkap dengan rincian item per orang—siap untuk dibagikan.
-* **Desain Responsif & Optimal**: Tampilan yang rapi dan terstruktur baik di desktop maupun mobile, dengan penyesuaian UI seperti menu aksi *dropdown*.
+* **Salin Teks untuk WhatsApp**: Salin hasil perhitungan dalam format teks yang rapi dan super detail—lengkap dengan rincian item per orang—siap untuk dibagikan.
+* **Desain Responsif & Optimal**: Tampilan yang rapi dan terstruktur baik di desktop maupun mobile, dengan penyesuaian UI seperti menu aksi *dropdown* untuk menghemat ruang.
 
 ## 🤔 Mengapa Input Massal Lebih Baik dari Scan Struk?
 
@@ -31,7 +30,7 @@ Kami sengaja memilih untuk tidak mengimplementasikan fitur scan struk (OCR) dan 
 
 Ingin langsung melihat cara kerja semua fitur tanpa input manual? Unduh file sesi contoh di bawah ini, lalu gunakan fitur **"Impor"** di aplikasi untuk memuatnya.
 
-[**Unduh Contoh File JSON**](https://github.com/Mysteriza/split-bill-web/releases/download/v1.0.0-assets/kalkulator-receh-sesi-2025-08-03.json)
+[**Unduh File JSON Contoh**](https://github.com/Mysteriza/split-bill-web/releases/download/v1.0.0-assets/kalkulator-receh-sesi-2025-08-03.json)
 
 File ini berisi data lengkap untuk 6 peserta dengan 11 item pesanan yang sudah ditandai, lengkap dengan pajak dan diskon.
 
@@ -76,22 +75,20 @@ Ingin menjalankan proyek ini di komputer Anda? Ikuti langkah-langkah berikut:
 
 1.  **Kelola Peserta & Sesi**
     * Ketik nama di kolom *"Nama Peserta Baru..."* lalu tekan `Enter`.
-    * Gunakan tombol **Kontak** untuk menambahkan dari daftar yang tersimpan di aplikasi, atau **Dari HP** untuk impor dari kontak perangkat.
+    * Gunakan tombol **Kontak** untuk menambahkan dari daftar yang tersimpan di aplikasi.
     * Gunakan **Impor/Ekspor** untuk memuat atau menyimpan sesi perhitungan.
 
 2.  **Input Semua Pesanan (Cara Cepat)**
     * Di kartu "Daftar Pesanan", gunakan area **Input Massal**.
     * Ketik atau *copy-paste* semua item dengan format: `Kuantitas Nama Item HargaTotal` per baris. Contoh: `2 Udang Keju 23836`.
-    * Klik tombol **"Tambahkan Semua Item dari Teks"**.
+    * Lihat pratinjau validasi di bawahnya untuk memastikan semua format benar, lalu klik **"Tambahkan Semua Item"**.
 
 3.  **Tandai & Kelola Item**
-    * Setelah semua item masuk daftar, gunakan tombol aksi di samping setiap item untuk:
-        * **Tandai Peserta** (<UserPlus />): Pilih siapa saja yang memesan item tersebut.
-        * **Beri Diskon** (<Percent />), **Edit** (<Pencil />), atau **Hapus** (<Trash2 />).
+    * Setelah semua item masuk daftar, gunakan tombol aksi di samping setiap item untuk **Tandai Peserta**, **Beri Diskon**, **Edit**, atau **Hapus**.
 
-4.  **Atur Biaya Tambahan & Penyederhanaan**
+4.  **Atur Biaya & Penyederhanaan**
     * Isi PPN, Pajak Jasa, Ongkir, dan Diskon Global.
-    * Atur pembulatan dan pilih siapa yang membayar tagihan untuk menyederhanakan utang.
+    * Atur pembulatan dan pilih siapa yang membayar tagihan. Jika sudah ada yang membayar, centang *checkbox* di kartu "Rincian Utang".
 
 5.  **Lihat & Bagikan Hasil**
     * Semua perhitungan akan ter-update secara **real-time**.
