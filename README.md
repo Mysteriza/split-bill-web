@@ -56,7 +56,7 @@ Ingin menjalankan proyek ini di komputer Anda? Ikuti langkah-langkah berikut:
 
 1.  **Clone Repositori**
     ```bash
-    git clone [https://github.com/Mysteriza/split-bill-web](https://github.com/Mysteriza/split-bill-web)
+    git clone https://github.com/Mysteriza/split-bill-web
     cd split-bill-web
     ```
 
