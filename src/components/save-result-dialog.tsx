@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/lib/i18n';
 import type { Summary, BillItem } from '@/types';
 
 interface SaveResultDialogProps {
@@ -26,13 +27,14 @@ const formatRupiah = (amount: number) => {
 
 export function SaveResultDialog({ children, summary, items }: SaveResultDialogProps) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   
   const generateTxtContent = () => {
     if (!summary) return '';
     
-    let content = `🧾 *Rincian Patungan - Kalkulator Receh* 🧾\n\n`;
+    let content = `${t('resTitle')}\n\n`;
     content += `====================================\n`;
-    content += `*👤 Rincian Bayar Per Orang:*\n\n`;
+    content += `${t('resPerPerson')}\n\n`;
 
     summary.participants.forEach(p => {
       content += `• *${p.name}* » *${formatRupiah(p.totalToPay)}*\n`;
@@ -49,23 +51,23 @@ export function SaveResultDialog({ children, summary, items }: SaveResultDialogP
 
     if (summary.transactions.length > 0) {
         content += `====================================\n`;
-        content += `*💳 Rincian Utang (Sudah Disederhanakan):*\n\n`;
-        summary.transactions.forEach(t => {
-            content += `  - *${t.from}* harus bayar *${formatRupiah(t.amount)}* ke *${t.to}*\n`;
+        content += `${t('resDebtDetails')}\n\n`;
+        summary.transactions.forEach(tData => {
+            content += `  - *${tData.from}* ${t('mustPay')} *${formatRupiah(tData.amount)}* ${t('to')} *${tData.to}*\n`;
         });
         content += `\n`;
     }
 
     content += `====================================\n`;
-    content += `*Ringkasan Biaya Bersama:*\n\n`;
-    content += `Subtotal Pesanan: ${formatRupiah(summary.totalItemExpenses)}\n`;
-    content += `PPN & Service Tax: ${formatRupiah(summary.ppnAmount + summary.serviceTaxAmount)}\n`;
-    content += `Ongkir: ${formatRupiah(summary.deliveryFee)}\n`;
-    content += `Total Diskon: -${formatRupiah(summary.totalDiscount)}\n`;
+    content += `${t('resSharedCost')}\n\n`;
+    content += `${t('resSubtotal')} ${formatRupiah(summary.totalItemExpenses)}\n`;
+    content += `${t('resTax')} ${formatRupiah(summary.ppnAmount + summary.serviceTaxAmount)}\n`;
+    content += `${t('resDelivery')} ${formatRupiah(summary.deliveryFee)}\n`;
+    content += `${t('resDiscount')} -${formatRupiah(summary.totalDiscount)}\n`;
     content += `------------------------------------\n`;
-    content += `*Total Tagihan: ${formatRupiah(summary.grandTotal)}*\n`;
+    content += `${t('resTotalBill').replace('{amount}', formatRupiah(summary.grandTotal))}\n`;
     content += `====================================\n\n`;
-    content += `_Dihitung dengan Kalkulator Receh ✨_`;
+    content += `${t('resFooter')}`;
     
     return content;
   };
@@ -78,30 +80,30 @@ export function SaveResultDialog({ children, summary, items }: SaveResultDialogP
   const handleCopyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(generateTxtContent());
-      toast({ title: 'Berhasil!', description: 'Rincian berhasil disalin ke clipboard.' });
+      toast({ title: t('toastSuccessTitle'), description: t('toastCopiedDetail') });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Gagal', description: 'Tidak dapat menyalin ke clipboard.' });
+      toast({ variant: 'destructive', title: t('toastFailTitle'), description: t('toastFailCopy') });
     }
   };
 
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="w-[94vw] sm:max-w-[600px] rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Bagikan Hasil Perhitungan</DialogTitle>
+          <DialogTitle>{t('saveShareResultDialogTitle')}</DialogTitle>
           <DialogDescription>
-            Salin teks di bawah ini untuk dibagikan ke teman-teman Anda melalui WhatsApp atau aplikasi lain.
+            {t('saveShareResultDialogDesc')}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="p-4 border rounded-md bg-muted/50 max-h-60 overflow-y-auto">
               <div className="text-xs whitespace-pre-wrap font-sans" dangerouslySetInnerHTML={generateHtmlPreview()} />
           </div>
-          <Button onClick={handleCopyToClipboard}>Salin Teks untuk WhatsApp</Button>
+          <Button onClick={handleCopyToClipboard}>{t('copyTextWA')}</Button>
         </div>
         <DialogFooter>
-            <DialogClose asChild><Button type="button" variant="outline">Tutup</Button></DialogClose>
+            <DialogClose asChild><Button type="button" variant="outline">{t('cancel')}</Button></DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
