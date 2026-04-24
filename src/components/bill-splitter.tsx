@@ -159,6 +159,8 @@ function ScanButton({ onScanComplete }: { onScanComplete: (items: any[]) => void
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const streamRef = useRef<MediaStream | null>(null);
+    const [warningOpen, setWarningOpen] = useState(false);
+    const [scannedItemsCount, setScannedItemsCount] = useState(0);
 
     const processImage = async (file: File) => {
         setIsScanning(true);
@@ -185,7 +187,8 @@ function ScanButton({ onScanComplete }: { onScanComplete: (items: any[]) => void
             if (lineItems.length === 0) throw new Error('Tidak ada item yang ditemukan pada struk');
             
             onScanComplete(lineItems);
-            toast({ description: `${lineItems.length} item berhasil dipindai.` });
+            setScannedItemsCount(lineItems.length);
+            setWarningOpen(true);
             
         } catch (error: any) {
             console.error(error);
@@ -268,6 +271,24 @@ function ScanButton({ onScanComplete }: { onScanComplete: (items: any[]) => void
                             <Camera className="mr-2 h-5 w-5" /> Ambil Foto Struk
                         </Button>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={warningOpen} onOpenChange={setWarningOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-500">
+                            <AlertTriangle className="h-5 w-5" /> Perhatian: Cek Kembali Hasil AI
+                        </DialogTitle>
+                        <DialogDescription className="pt-2 text-sm text-foreground">
+                            AI telah memindai <strong>{scannedItemsCount} item</strong> dari struk Anda dan menyalinnya ke kotak Input Massal di bawah.
+                            <br/><br/>
+                            Teknologi pembacaan struk (OCR) tidak selalu 100% sempurna, apalagi jika struk buram atau lecek. <strong>Mohon periksa dan koreksi secara manual</strong> nama item, kuantitas, serta harga jika ada kesalahan baca (typo) sebelum Anda menekan tombol "Tambahkan Item".
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => setWarningOpen(false)}>Siap, Saya Mengerti</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
