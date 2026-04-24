@@ -315,7 +315,44 @@ function EditItemDialog({ item, onSave, children }: { item: BillItem; onSave: (i
     return (<Dialog><DialogTrigger asChild>{children}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>Edit Item</DialogTitle><DialogDescription>Ubah detail pesanan di bawah ini.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2"><Label htmlFor="edit-desc">Nama Item</Label><Input id="edit-desc" value={description} onChange={(e) => setDescription(e.target.value)} /></div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><Label htmlFor="edit-qty">Kuantitas</Label><Input id="edit-qty" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></div><div className="space-y-2"><Label htmlFor="edit-price">Harga Satuan</Label><Input id="edit-price" type="text" value={formattedPrice} onChange={handleAmountChange} /></div></div></div><DialogFooter><DialogClose asChild><Button type="button" variant="secondary">Batal</Button></DialogClose><DialogClose asChild><Button type="button" onClick={handleSave}>Simpan Perubahan</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
 }
 function TutorialDialog() {
-    return (<Dialog><DialogTrigger asChild><Button variant="link" className="p-0 h-auto text-muted-foreground gap-1"><HelpCircle className="h-4 w-4" /> Tutorial</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle className="flex items-center gap-2"><HelpCircle/> Panduan Cepat Kalkulator Receh</DialogTitle><DialogDescription>Ikuti langkah-langkah ini untuk membagi tagihan secara efisien.</DialogDescription></DialogHeader><div className="text-sm space-y-4 max-h-[70vh] overflow-y-auto pr-4 pt-2"><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Users className="h-4 w-4"/> 1. Kelola Peserta & Sesi</h4><p className="text-muted-foreground pl-6">Tambahkan peserta secara manual, dari kontak, atau impor sesi dari file JSON. Anda juga bisa mengekspor sesi saat ini atau mereset semua data.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> 2. Input Pesanan (Cara Cepat)</h4><p className="text-muted-foreground pl-6">Gunakan fitur <strong>Input Massal</strong>. Salin-tempel beberapa baris dari struk dengan format <strong>Qty Nama Item HargaTotal</strong> untuk menambahkan semua pesanan sekaligus.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Receipt className="h-4 w-4"/> 3. Kelola Setiap Item</h4><p className="text-muted-foreground pl-6">Setelah item ditambahkan, gunakan tombol aksi untuk:</p><ul className="list-disc pl-12 text-muted-foreground space-y-1 mt-1"><li><strong className="text-foreground">Tandai Peserta (<UserPlus size={14} className="inline-block"/>):</strong> Pilih siapa saja yang ikut memesan item tersebut.</li><li><strong className="text-foreground">Beri Diskon (<Percent size={14} className="inline-block"/>):</strong> Tambahkan diskon khusus untuk item itu.</li><li><strong className="text-foreground">Edit & Hapus (<Pencil size={14} className="inline-block"/> / <Trash2 size={14} className="inline-block"/>):</strong> Ubah atau hapus item jika ada kesalahan.</li></ul></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Info className="h-4 w-4"/> 4. Atur Biaya Tambahan</h4><p className="text-muted-foreground pl-6">Masukkan PPN, Pajak Jasa, Ongkos Kirim, dan Diskon Global yang berlaku untuk seluruh tagihan.</p></div><div><h4 className="font-semibold mb-1 flex items-center gap-2"><Sparkles className="h-4 w-4"/> 5. Lihat Hasil & Bagikan</h4><p className="text-muted-foreground pl-6">Atur pembulatan dan pilih siapa yang membayar. Hasilnya akan terhitung otomatis dan siap dibagikan ke teman-teman Anda.</p></div></div><DialogFooter><DialogClose asChild><Button>Mengerti!</Button></DialogClose></DialogFooter></DialogContent></Dialog>);
+    return (
+        <Dialog>
+            <DialogTrigger asChild><Button variant="link" className="p-0 h-auto text-muted-foreground gap-1"><HelpCircle className="h-4 w-4" /> Panduan Lengkap</Button></DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-xl"><BookUser className="h-5 w-5 text-primary"/> Cara Pakai Kalkulator Receh</DialogTitle>
+                    <DialogDescription>Ikuti langkah mudah ini untuk membagi tagihan dengan cepat dan akurat.</DialogDescription>
+                </DialogHeader>
+                <div className="text-sm space-y-5 max-h-[70vh] overflow-y-auto pr-4 pt-2">
+                    <div>
+                        <h4 className="font-semibold mb-1 flex items-center gap-2 text-foreground"><Users className="h-4 w-4 text-blue-500"/> 1. Masukkan Nama Peserta</h4>
+                        <p className="text-muted-foreground pl-6">Ketik nama teman-teman Anda yang ikut patungan. Anda juga bisa memilih dari <strong>Buku Kontak</strong> agar tidak perlu mengetik ulang nama yang sama di masa depan.</p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-1 flex items-center gap-2 text-foreground"><Camera className="h-4 w-4 text-emerald-500"/> 2. Scan Struk Otomatis (Fitur AI)</h4>
+                        <p className="text-muted-foreground pl-6">Tidak perlu ketik manual! Klik <strong>Buka Kamera</strong> untuk memfoto struk, atau <strong>Upload</strong> foto struk dari galeri. AI Pintar kami akan membaca struk dan menyalin isinya ke kotak Input Massal secara otomatis.</p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-1 flex items-center gap-2 text-foreground"><ChevronsRight className="h-4 w-4 text-orange-500"/> 3. Input Manual (Opsional)</h4>
+                        <p className="text-muted-foreground pl-6">Jika tidak memfoto struk, Anda bisa mengetik langsung di kotak Input Massal dengan format: <strong>Qty Nama_Item Harga_Total</strong> (Contoh: <code className="bg-muted px-1 rounded">2 Es Teh 10000</code>). Pastikan semuanya valid lalu klik <strong>Tambahkan Item</strong>.</p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-1 flex items-center gap-2 text-foreground"><Receipt className="h-4 w-4 text-purple-500"/> 4. Siapa Pesan Apa?</h4>
+                        <p className="text-muted-foreground pl-6">Pada Daftar Pesanan, klik tombol <strong className="text-foreground"><UserPlus size={14} className="inline-block"/> (Tandai Peserta)</strong> untuk memilih siapa saja yang ikut menikmati makanan tersebut. Harga akan dibagi rata sesuai jumlah orang.</p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-1 flex items-center gap-2 text-foreground"><Info className="h-4 w-4 text-amber-500"/> 5. Pajak, Diskon & Ongkir</h4>
+                        <p className="text-muted-foreground pl-6">Jangan lupa masukkan <strong>PPN (misal 11%)</strong>, Pajak Layanan (Service), Ongkos Kirim (jika pesan ojol), dan Diskon Global jika ada. Sistem akan membaginya secara proporsional ke semua peserta.</p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-1 flex items-center gap-2 text-foreground"><Sparkles className="h-4 w-4 text-pink-500"/> 6. Bagikan Hasil Tagihan!</h4>
+                        <p className="text-muted-foreground pl-6">Kalkulator akan menampilkan total rinci yang sangat presisi untuk tiap orang. Anda juga bisa mengatur pembulatan nominal, lalu klik <strong>Bagikan Hasil</strong> untuk di-<em>copy</em> ke WhatsApp!</p>
+                    </div>
+                </div>
+                <DialogFooter><DialogClose asChild><Button className="w-full">Saya Mengerti, Ayo Mulai!</Button></DialogClose></DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
 function ContactsDialog({ onSelect, contacts, setContacts }: { onSelect: (contact: Pick<SessionParticipant, 'id' | 'name'>) => void; contacts: Pick<SessionParticipant, 'id' | 'name'>[]; setContacts: React.Dispatch<React.SetStateAction<Pick<SessionParticipant, 'id' | 'name'>[]>>;}) {
     const [newContactName, setNewContactName] = useState('');
