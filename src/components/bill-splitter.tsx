@@ -28,6 +28,7 @@ import {
   MoreVertical,
   CheckCircle2,
   XCircle,
+  Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -146,6 +147,153 @@ function TagParticipantDialog({ item, sessionParticipants, onTag, children }: { 
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function ScanButton({ onScanComplete }: { onScanComplete: (items: any[]) => void }) {
+    const [isScanning, setIsScanning] = useState(false);
+    const [statusText, setStatusText] = useState('');
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const streamRef = useRef<MediaStream | null>(null);
+
+    const processImage = async (file: File) => {
+        setIsScanning(true);
+        setStatusText('Memproses OCR...');
+        
+        try {
+            const formData = new FormData();
+            formData.append('receipt', file);
+            
+            const submitRes = await fetch('/api/ocr', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!submitRes.ok) {
+                const err = await submitRes.json().catch(()=>({}));
+                throw new Error(err.error || 'Gagal terhubung ke server OCR');
+            }
+            
+            const submitData = await submitRes.json();
+            if (submitData.error) throw new Error(submitData.error);
+            
+            const lineItems = submitData.lineItems || [];
+            if (lineItems.length === 0) throw new Error('Tidak ada item yang ditemukan pada struk');
+            
+            onScanComplete(lineItems);
+            toast({ description: `${lineItems.length} item berhasil dipindai.` });
+            
+        } catch (error: any) {
+            console.error(error);
+            toast({ variant: 'destructive', description: error.message || "Gagal memindai struk." });
+        } finally {
+            setIsScanning(false);
+            setStatusText('');
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            processImage(e.target.files[0]);
+        }
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const openCamera = async () => {
+        setIsCameraOpen(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+            streamRef.current = stream;
+        } catch (err) {
+            toast({ variant: 'destructive', description: "Gagal mengakses kamera. Pastikan izin kamera diberikan atau gunakan opsi Upload File." });
+            setIsCameraOpen(false);
+        }
+    };
+
+    const closeCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        setIsCameraOpen(false);
+    };
+
+    const captureImage = () => {
+        if (videoRef.current) {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoRef.current.videoWidth;
+            canvas.height = videoRef.current.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const file = new File([blob], "receipt.jpg", { type: "image/jpeg" });
+                        processImage(file);
+                        closeCamera();
+                    }
+                }, 'image/jpeg', 0.8);
+            }
+        }
+    };
+
+    return (
+        <>
+            <input 
+                type="file" 
+                accept="image/*" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+            />
+            
+            <Dialog open={isCameraOpen} onOpenChange={(open) => !open && closeCamera()}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Kamera Pemindai</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                        <div className="relative w-full aspect-[3/4] bg-black rounded-md overflow-hidden flex items-center justify-center">
+                            <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+                            {!streamRef.current && <span className="text-white text-sm">Memuat kamera...</span>}
+                        </div>
+                        <Button onClick={captureImage} className="w-full h-12 text-lg">
+                            <Camera className="mr-2 h-5 w-5" /> Ambil Foto Struk
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <div className="flex gap-2 w-full">
+                <Button 
+                    variant="secondary" 
+                    className="flex-1"
+                    disabled={isScanning}
+                    onClick={openCamera}
+                >
+                    {isScanning ? (
+                        <span className="flex items-center justify-center gap-2 w-full"><div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div> {statusText}</span>
+                    ) : (
+                        <span className="flex items-center justify-center gap-2 w-full"><Camera className="h-4 w-4" /> Buka Kamera</span>
+                    )}
+                </Button>
+                <Button 
+                    variant="outline" 
+                    className="flex-none px-3"
+                    disabled={isScanning}
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload File Struk"
+                >
+                    <Upload className="h-4 w-4" />
+                </Button>
+            </div>
+        </>
     );
 }
 // --- END: Updated TagParticipantDialog ---
@@ -278,6 +426,7 @@ export function BillSplitter() {
   const handleAddParticipant = () => { addParticipant(newParticipantName); setNewParticipantName(''); };
   const removeParticipant = (id: string) => { setSessionParticipants(prev => prev.filter(p => p.id !== id)); setItems(prev => prev.map(item => ({ ...item, sharedBy: item.sharedBy.filter(pId => pId !== id) }))); };
   const handleBulkAdd = () => { const newItems = validatedLines.filter(v => v.isValid && v.data).map(v => ({...v.data!, id: crypto.randomUUID()})); const failedCount = validatedLines.length - newItems.length; if (newItems.length > 0) { setItems(prev => [...prev, ...newItems]); toast({ description: `${newItems.length} item berhasil ditambahkan.` }); } if (failedCount > 0) { toast({ variant: 'destructive', description: `${failedCount} baris gagal diproses. Periksa pratinjau untuk detail.` }); } else { setBulkText(''); } };
+  const handleScanComplete = (scannedItems: any[]) => { const newLines = scannedItems.map(item => `${item.qty} ${item.name} ${item.totalPrice}`).join('\n'); setBulkText(newLines); };
   const handleEditItem = (itemId: string, newDesc: string, newQty: number, newPrice: number) => { setItems(prev => prev.map(item => item.id === itemId ? { ...item, description: newDesc, quantity: newQty, price: newPrice } : item)); toast({ description: "Item berhasil diperbarui." }); };
   const removeItem = (id: string) => setItems(prev => prev.filter(item => item.id !== id));
   const handleTagParticipant = (itemId: string, participantIds: string[]) => setItems(prev => prev.map(item => item.id === itemId ? {...item, sharedBy: participantIds} : item));
@@ -314,15 +463,21 @@ export function BillSplitter() {
             <AnimatePresence>{items.map(item => (<motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20, transition: {duration: 0.2} }}><div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"><div className="flex-1 min-w-0"><p className="font-medium text-sm truncate" dangerouslySetInnerHTML={{__html: `${item.description} (x${item.quantity})`}}></p><p className="text-sm font-mono text-muted-foreground">{formatRupiah(item.price * item.quantity)}</p></div><div className="flex items-center gap-1 ml-2"><ParticipantTagList item={item} sessionParticipants={sessionParticipants} />{isMobile ? (<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem onSelect={(e) => e.preventDefault()}><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><div className="flex items-center w-full"><UserPlus className="mr-2 h-4 w-4"/> Tandai Peserta</div></TagParticipantDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()}><ItemDiscountDialog item={item} onSave={handleItemDiscount}><div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/> Beri Diskon</div></ItemDiscountDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()}><EditItemDialog item={item} onSave={handleEditItem}><div className="flex items-center w-full"><Pencil className="mr-2 h-4 w-4"/> Edit Item</div></EditItemDialog></DropdownMenuItem><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive"><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><div className="flex items-center w-full"><Trash2 className="mr-2 h-4 w-4"/> Hapus Item</div></ConfirmationDialog></DropdownMenuItem></DropdownMenuContent></DropdownMenu>) : (<><ItemDiscountDialog item={item} onSave={handleItemDiscount}><Button variant={item.discount.value > 0 ? "secondary" : "ghost"} size="icon" className="h-8 w-8"><Percent className="h-4 w-4" /></Button></ItemDiscountDialog><TagParticipantDialog item={item} sessionParticipants={sessionParticipants} onTag={handleTagParticipant}><Button variant="outline" size="sm" className="h-8"><UserPlus className="h-4 w-4" /></Button></TagParticipantDialog><EditItemDialog item={item} onSave={handleEditItem}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4 text-blue-600" /></Button></EditItemDialog><ConfirmationDialog title="Hapus Item Ini?" description={`Anda yakin ingin menghapus item "${item.description}"?`} onConfirm={() => removeItem(item.id)}><Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4 text-destructive" /></Button></ConfirmationDialog></>)}</div></div></motion.div>))}</AnimatePresence>
           </CardContent>
           <CardFooter className="p-4 pt-0 border-t">
-              <div className="w-full space-y-3 mt-4"><Label htmlFor="bulk-input" className="font-semibold flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> Input Massal (Cara Cepat)</Label><Textarea id="bulk-input" placeholder={`1 Nasi Goreng Spesial 25000\n2 Es Teh Manis 10000\n1 Kerupuk 2000`} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={4} /><p className="text-xs text-muted-foreground">Format: <strong>Qty Nama Item HargaTotal</strong>. Contoh: <code className="bg-muted px-1 rounded">2 Udang Keju 30000</code></p>
+              <div className="w-full space-y-3 mt-4">
+                  <div className="flex items-center justify-between gap-4">
+                      <Label htmlFor="bulk-input" className="font-semibold flex items-center gap-2"><ChevronsRight className="h-4 w-4"/> Input Massal</Label>
+                      <div className="w-1/2 sm:w-1/3"><ScanButton onScanComplete={handleScanComplete} /></div>
+                  </div>
+                  <Textarea id="bulk-input" placeholder={`1 Nasi Goreng Spesial 25000\n2 Es Teh Manis 10000\n1 Kerupuk 2000`} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={4} />
+                  <p className="text-xs text-muted-foreground">Format: <strong>Qty Nama Item HargaTotal</strong>. Scan Struk untuk mengisi otomatis, lalu audit dan edit bila perlu.</p>
               {validatedLines.length > 0 && (<div className="border rounded-md p-2 space-y-1 max-h-32 overflow-y-auto">{validatedLines.map((v, i) => (<div key={i} className={`flex items-center gap-2 text-xs ${!v.isValid ? 'text-destructive' : 'text-green-600'}`}>{v.isValid ? <CheckCircle2 className="h-3 w-3"/> : <XCircle className="h-3 w-3"/>}<span className="font-mono flex-1 truncate">{v.line}</span>{!v.isValid && <span className="font-semibold">{v.error}</span>}</div>))}</div>)}
-              <Button onClick={handleBulkAdd} className="w-full" disabled={validatedLines.some(v => !v.isValid)}>Tambahkan Item dari Teks</Button></div>
+              <Button onClick={handleBulkAdd} className="w-full" disabled={validatedLines.some(v => !v.isValid) || validatedLines.length === 0}>Tambahkan Item</Button></div>
           </CardFooter>
         </Card>
         <Card><CardHeader><CardTitle className="flex items-center gap-3"><Info className="h-6 w-6"/> Biaya Tambahan</CardTitle></CardHeader><CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><div className="space-y-2"><Label htmlFor="ppn" className="text-xs">PPN (%)</Label><Input id="ppn" type="number" placeholder="0" value={ppn} onChange={e => setPpn(e.target.value)} /></div><div className="space-y-2"><Label className="text-xs">Service Tax</Label><div className="flex items-center gap-2"><RadioGroup value={serviceTaxType} onValueChange={(v: 'amount' | 'percentage') => setServiceTaxType(v)} className="flex"><div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="st-percentage" /><Label htmlFor="st-percentage" className="text-xs font-normal">%</Label></div><div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="st-amount" /><Label htmlFor="st-amount" className="text-xs font-normal">Rp</Label></div></RadioGroup><Input type={serviceTaxType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={serviceTaxValue} onChange={serviceTaxType === 'percentage' ? e => setServiceTaxValue(e.target.value) : handleAmountChange(setServiceTaxValue)} /></div></div><div className="space-y-2"><Label htmlFor="deliveryFee" className="text-xs">Ongkir (Rp)</Label><Input id="deliveryFee" type="text" inputMode="decimal" placeholder="0" value={deliveryFee} onChange={handleAmountChange(setDeliveryFee)} /></div><div className="space-y-2"><Label className="text-xs">Diskon Global</Label><div className="flex items-center gap-2"><RadioGroup value={globalDiscountType} onValueChange={(v: 'amount' | 'percentage') => setGlobalDiscountType(v)} className="flex"><div className="flex items-center space-x-1.5"><RadioGroupItem value="percentage" id="gd-percentage" /><Label htmlFor="gd-percentage" className="text-xs font-normal">%</Label></div><div className="flex items-center space-x-1.5"><RadioGroupItem value="amount" id="gd-amount" /><Label htmlFor="gd-amount" className="text-xs font-normal">Rp</Label></div></RadioGroup><Input type={globalDiscountType === 'percentage' ? 'number' : 'text'} inputMode="decimal" placeholder="0" value={globalDiscountValue} onChange={globalDiscountType === 'percentage' ? e => setGlobalDiscountValue(e.target.value) : handleAmountChange(setGlobalDiscountValue)} /></div></div></CardContent></Card>
         {summary && sessionParticipants.length > 0 && (
         <div className="space-y-4">
-            <Card><CardHeader><CardTitle>Visualisasi Porsi Bayar</CardTitle></CardHeader><CardContent className="h-80 w-full"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={summary.participants} dataKey="totalToPay" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => { const RADIAN = Math.PI / 180; const radius = innerRadius + (outerRadius - innerRadius) * 1.2; const x = cx + radius * Math.cos(-midAngle * RADIAN); const y = cy + radius * Math.sin(-midAngle * RADIAN); return ( <text x={x} y={y} fill="black" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs"> {`${summary.participants[index].name} (${(percent * 100).toFixed(0)}%)`} </text> ); }}>{summary.participants.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><RechartsTooltip formatter={(value) => formatRupiah(value as number)} /><Legend /></PieChart></ResponsiveContainer></CardContent></Card>
+            <Card><CardHeader><CardTitle>Visualisasi Porsi Bayar</CardTitle></CardHeader><CardContent className="h-80 w-full"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={summary.participants} dataKey="totalToPay" nameKey="name" cx="50%" cy="50%" outerRadius={100} labelLine={false} label={({ cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0, index = 0 }) => { const RADIAN = Math.PI / 180; const radius = (innerRadius as number) + ((outerRadius as number) - (innerRadius as number)) * 1.2; const x = (cx as number) + radius * Math.cos(-(midAngle as number) * RADIAN); const y = (cy as number) + radius * Math.sin(-(midAngle as number) * RADIAN); return ( <text x={x} y={y} fill="black" textAnchor={x > (cx as number) ? 'start' : 'end'} dominantBaseline="central" className="text-xs"> {`${summary.participants[index as number]?.name} (${((percent as number) * 100).toFixed(0)}%)`} </text> ); }}>{summary.participants.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><RechartsTooltip formatter={(value) => formatRupiah(value as number)} /><Legend /></PieChart></ResponsiveContainer></CardContent></Card>
             <div className="grid lg:grid-cols-2 gap-4">
                 <div className="space-y-4"><Card><CardHeader><CardTitle className="flex items-center gap-3"><Sparkles className="h-6 w-6"/> Penyederhanaan</CardTitle></CardHeader><CardContent className="grid sm:grid-cols-2 gap-4"><div className="space-y-2"><Label>Pembulatan</Label><Select onValueChange={(val) => setRounding(parseInt(val))} defaultValue="0"><SelectTrigger><SelectValue placeholder="Pilih Pembulatan" /></SelectTrigger><SelectContent><SelectItem value="0">Tidak ada</SelectItem><SelectItem value="100">Ke atas (Rp 100)</SelectItem><SelectItem value="500">Ke atas (Rp 500)</SelectItem><SelectItem value="1000">Ke atas (Rp 1.000)</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label>Siapa yang Bayar?</Label><Select onValueChange={(id) => setPayerId(id === 'none' ? undefined : id)} value={payerId}><SelectTrigger><SelectValue placeholder="Pilih Pembayar" /></SelectTrigger><SelectContent><SelectItem value="none">Belum Ditentukan</SelectItem>{sessionParticipants.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>{summary.roundingDifference !== 0 && (<p className="sm:col-span-2 text-sm text-muted-foreground">{summary.roundingDifference > 0 ? 'Total kelebihan (tip): ' : 'Total kekurangan: '}<span className="font-bold text-primary">{formatRupiah(Math.abs(summary.roundingDifference))}</span></p>)}</CardContent></Card>
                 {summary.transactions.length > 0 && (<Card><CardHeader><CardTitle className="flex items-center gap-3"><Wallet className="h-6 w-6"/> Rincian Utang</CardTitle></CardHeader><CardContent>{summary.transactions.map(t => { const transactionKey = `${t.from}-${t.to}-${t.amount}`; const isPaid = paidTransactions.has(transactionKey); return (<div key={transactionKey} className="flex items-center gap-2"><Checkbox id={transactionKey} checked={isPaid} onCheckedChange={() => handleTogglePaidTransaction(transactionKey)} /><Label htmlFor={transactionKey} className={`text-sm ${isPaid ? 'line-through text-muted-foreground' : ''}`}><span className="font-bold" dangerouslySetInnerHTML={{__html: t.from}}></span> harus bayar <span className="font-bold text-primary">{formatRupiah(t.amount)}</span> ke <span className="font-bold" dangerouslySetInnerHTML={{__html: t.to}}></span></Label></div>) })}</CardContent></Card>)}</div>

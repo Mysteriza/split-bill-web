@@ -1,33 +1,15 @@
-/** @type {import('next').NextConfig} */
+import withPWAInit from "@ducanh2912/next-pwa";
 
-const cspHeader = `
-    default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline';
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data:;
-    font-src 'self';
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self';
-    frame-ancestors 'none';
-    block-all-mixed-content;
-    upgrade-insecure-requests;
-`
+const withPWA = withPWAInit({
+  dest: "public",
+  disable: process.env.NODE_ENV === "development",
+  register: true,
+});
 
-const nextConfig = {
-    async headers() {
-        return [
-            {
-                source: '/(.*)',
-                headers: [
-                    {
-                        key: 'Content-Security-Policy',
-                        value: cspHeader.replace(/\n/g, ''),
-                    },
-                ],
-            },
-        ]
-    },
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+    // output: 'export', // Removed to support Next.js API routes (CORS proxy for Tabscanner)
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);
